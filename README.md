@@ -6,12 +6,20 @@ This repository contains simulation code used in the paper titled "Non-Parametri
 
 The code provided here accompanies the research paper and facilitates the reproduction of the results. It comprises simulation scripts written in R, designed to emulate the scenarios described in the paper.
 
+
 ## Usage
 
-To utilize the code, follow these steps:
+The algorithm are in the 'algorithm' folder:
 
-Clone the repository to your local machine.
-Navigate to the directory containing the desired simulation script.
-Run the script using [specific instructions, e.g., command-line arguments or software requirements].
-The script will output [describe output, e.g., data files or visualizations].
+- calibrateAUC.R: calculate AUC
+
+- CI_functions.R: calculate bootstrap CI of AUC
+
+- generate_data.R: generate data for simulations
+
+The main simulations (section 3.2.2) are conducted with simulation_para.R.
+
+The MB test simulations (section 3.2.1) are conducted with test_MB.R (MB test) and sim_MB_test.R (proposed method).
+
+The sensitivity analysis (section 4) are conducted with simulation_sensitivity.R.
 
