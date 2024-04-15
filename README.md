@@ -23,3 +23,6 @@ The MB test simulations (section 3.2.1) are conducted with test_MB.R (MB test) a
 
 The sensitivity analysis (section 4) are conducted with simulation_sensitivity.R.
 
+Tables and figures are generated using functions in 'visualize results' folder.
+
+Note: we scaled the time from t=0.15 year to month by multiplying the AUC by 30 and devided $\lambda$ by 30. 
