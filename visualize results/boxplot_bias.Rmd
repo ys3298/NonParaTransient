@@ -1,0 +1,1218 @@
+---
+title: "make table figure"
+output: html_document
+date: "2023-09-07"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+source('/storage/work/yqs5519/SurvivalPlot/algorithm/generate_data.R')
+```
+
+
+## Calibration + With censor
+
+```{r}
+# n=200 Scenario1
+
+setting = read.delim('/storage/work/yqs5519/SurvivalPlot/sensitivity_results1/settings.txt') ## need to change manually
+location = setting[29,]
+location = gsub('/y/','/', location) 
+# Time_End = 0.15
+# original_stat = read.csv(paste(location, 'original_statistic.csv', sep = ''))[,-1]
+# stat_list = readRDS(paste(location, 'stat_list.rds', sep = ''))
+
+quantile = read.csv(paste(location, 'quantile.csv', sep = ''))[,-1]
+quantile2 = quantile %>% filter(quantile == 0.85)
+Time_End = round_func(quantile2$quantile_mean, mean_min = 'min') %>% as.numeric() %>% round(2)
+
+time_vec = seq(0.05,0.5,0.05) %>% as.numeric() %>% round(2)
+ind = which(time_vec == Time_End)
+
+original_stat = read.csv(paste(location, 'original_statistic', ind, '.csv', sep = ''))[,-1]
+stat_list = readRDS(paste(location, 'stat_list', ind, '.rds', sep = ''))
+  
+  
+
+lambda = setting[21,] %>% as.numeric()
+rho = setting[23,] %>% as.numeric()
+beta1 = setting[13,] %>% as.numeric()
+beta2 = setting[14,] %>% as.numeric()
+beta3 = setting[15,] %>% as.numeric()
+
+C_Survival_weibull1 = function(t) {
+  1-exp(-lambda*(t^rho)*exp(beta1))
+}
+
+C_Survival_weibull2 = function(t) {
+  1-exp(-lambda*(t^rho)*exp(beta2))
+}
+
+C_Survival_weibull3 = function(t) {
+  1-exp(-lambda*(t^rho)*exp(beta3))
+}
+
+
+True_AUC1 = integrate(C_Survival_weibull1, 0, Time_End)$value
+True_AUC2 = integrate(C_Survival_weibull2, 0, Time_End)$value
+True_AUC3 = integrate(C_Survival_weibull3, 0, Time_End)$value
+
+bias_df1 = data.frame(IMC0 = original_stat[,1] - True_AUC1,
+                     IMC1 = original_stat[,2] - True_AUC2,
+                     IMC2 = original_stat[,3] - True_AUC3) %>% 
+  pivot_longer(1:3,
+               names_to = 'Stage',
+               values_to = 'Bias') %>% 
+  mutate(Scenario = 'S1',  n='n=200', method = 'Proposed')
+```
+
+```{r}
+# n=200 Scenario2
+setting = read.delim('/storage/work/yqs5519/SurvivalPlot/sensitivity_results5/settings.txt') ## need to change manually
+location = setting[29,]
+location = gsub('/y/','/', location) 
+# Time_End = 0.15
+# original_stat = read.csv(paste(location, 'original_statistic.csv', sep = ''))[,-1]
+# stat_list = readRDS(paste(location, 'stat_list.rds', sep = ''))
+
+quantile = read.csv(paste(location, 'quantile.csv', sep = ''))[,-1]
+quantile2 = quantile %>% filter(quantile == 0.85)
+Time_End = round_func(quantile2$quantile_mean, mean_min = 'min') %>% as.numeric() %>% round(2)
+
+time_vec = seq(0.05,0.5,0.05) %>% as.numeric() %>% round(2)
+ind = which(time_vec == Time_End)
+
+original_stat = read.csv(paste(location, 'original_statistic', ind, '.csv', sep = ''))[,-1]
+stat_list = readRDS(paste(location, 'stat_list', ind, '.rds', sep = ''))
+lambda = setting[21,] %>% as.numeric()
+rho = setting[23,] %>% as.numeric()
+beta1 = setting[13,] %>% as.numeric()
+beta2 = setting[14,] %>% as.numeric()
+beta3 = setting[15,] %>% as.numeric()
+
+C_Survival_weibull1 = function(t) {
+  1-exp(-lambda*(t^rho)*exp(beta1))
+}
+
+C_Survival_weibull2 = function(t) {
+  1-exp(-lambda*(t^rho)*exp(beta2))
+}
+
+C_Survival_weibull3 = function(t) {
+  1-exp(-lambda*(t^rho)*exp(beta3))
+}
+
+
+True_AUC1 = integrate(C_Survival_weibull1, 0, Time_End)$value
+True_AUC2 = integrate(C_Survival_weibull2, 0, Time_End)$value
+True_AUC3 = integrate(C_Survival_weibull3, 0, Time_End)$value
+
+bias_df2 = data.frame(IMC0 = original_stat[,1] - True_AUC1,
+                     IMC1 = original_stat[,2] - True_AUC2,
+                     IMC2 = original_stat[,3] - True_AUC3) %>% 
+  pivot_longer(1:3,
+               names_to = 'Stage',
+               values_to = 'Bias') %>% 
+  mutate(Scenario = 'S2',  n='n=200', method = 'Proposed')
+```
+
+```{r}
+# n=200 Scenario3
+setting = read.delim('/storage/work/yqs5519/SurvivalPlot/sensitivity_results13/settings.txt') ## need to change manually
+location = setting[29,]
+location = gsub('/y/','/', location) 
+# Time_End = 0.15
+# original_stat = read.csv(paste(location, 'original_statistic.csv', sep = ''))[,-1]
+# stat_list = readRDS(paste(location, 'stat_list.rds', sep = ''))
+
+quantile = read.csv(paste(location, 'quantile.csv', sep = ''))[,-1]
+quantile2 = quantile %>% filter(quantile == 0.85)
+Time_End = round_func(quantile2$quantile_mean, mean_min = 'min') %>% as.numeric() %>% round(2)
+
+time_vec = seq(0.05,0.5,0.05) %>% as.numeric() %>% round(2)
+ind = which(time_vec == Time_End)
+
+original_stat = read.csv(paste(location, 'original_statistic', ind, '.csv', sep = ''))[,-1]
+stat_list = readRDS(paste(location, 'stat_list', ind, '.rds', sep = ''))
+
+lambda = setting[21,] %>% as.numeric()
+rho = setting[23,] %>% as.numeric()
+beta1 = setting[13,] %>% as.numeric()
+beta2 = setting[14,] %>% as.numeric()
+beta3 = setting[15,] %>% as.numeric()
+
+C_Survival_weibull1 = function(t) {
+  1-exp(-lambda*(t^rho)*exp(beta1))
+}
+
+C_Survival_weibull2 = function(t) {
+  1-exp(-lambda*(t^rho)*exp(beta2))
+}
+
+C_Survival_weibull3 = function(t) {
+  1-exp(-lambda*(t^rho)*exp(beta3))
+}
+
+
+True_AUC1 = integrate(C_Survival_weibull1, 0, Time_End)$value
+True_AUC2 = integrate(C_Survival_weibull2, 0, Time_End)$value
+True_AUC3 = integrate(C_Survival_weibull3, 0, Time_End)$value
+
+bias_df3 = data.frame(IMC0 = original_stat[,1] - True_AUC1,
+                     IMC1 = original_stat[,2] - True_AUC2,
+                     IMC2 = original_stat[,3] - True_AUC3) %>% 
+  pivot_longer(1:3,
+               names_to = 'Stage',
+               values_to = 'Bias') %>% 
+  mutate(Scenario = 'S3',  n='n=200', method = 'Proposed')
+```
+
+```{r}
+# n=200 Scenario4
+setting = read.delim('/storage/work/yqs5519/SurvivalPlot/sensitivity_results6/settings.txt') ## need to change manually
+location = setting[29,]
+location = gsub('/y/','/', location) 
+# Time_End = 0.15
+# original_stat = read.csv(paste(location, 'original_statistic.csv', sep = ''))[,-1]
+# stat_list = readRDS(paste(location, 'stat_list.rds', sep = ''))
+
+quantile = read.csv(paste(location, 'quantile.csv', sep = ''))[,-1]
+quantile2 = quantile %>% filter(quantile == 0.85)
+Time_End = round_func(quantile2$quantile_mean, mean_min = 'min') %>% as.numeric() %>% round(2)
+
+time_vec = seq(0.05,0.5,0.05) %>% as.numeric() %>% round(2)
+ind = which(time_vec == Time_End)
+
+original_stat = read.csv(paste(location, 'original_statistic', ind, '.csv', sep = ''))[,-1]
+stat_list = readRDS(paste(location, 'stat_list', ind, '.rds', sep = ''))
+lambda = setting[21,] %>% as.numeric()
+rho = setting[23,] %>% as.numeric()
+beta1 = setting[13,] %>% as.numeric()
+beta2 = setting[14,] %>% as.numeric()
+beta3 = setting[15,] %>% as.numeric()
+
+C_Survival_weibull1 = function(t) {
+  1-exp(-lambda*(t^rho)*exp(beta1))
+}
+
+C_Survival_weibull2 = function(t) {
+  1-exp(-lambda*(t^rho)*exp(beta2))
+}
+
+C_Survival_weibull3 = function(t) {
+  1-exp(-lambda*(t^rho)*exp(beta3))
+}
+
+
+True_AUC1 = integrate(C_Survival_weibull1, 0, Time_End)$value
+True_AUC2 = integrate(C_Survival_weibull2, 0, Time_End)$value
+True_AUC3 = integrate(C_Survival_weibull3, 0, Time_End)$value
+
+bias_df4 = data.frame(IMC0 = original_stat[,1] - True_AUC1,
+                     IMC1 = original_stat[,2] - True_AUC2,
+                     IMC2 = original_stat[,3] - True_AUC3) %>% 
+  pivot_longer(1:3,
+               names_to = 'Stage',
+               values_to = 'Bias') %>% 
+  mutate(Scenario = 'S4',  n='n=200', method = 'Proposed')
+```
+
+
+```{r}
+# n=500 Scenario1
+setting = read.delim('/storage/work/yqs5519/SurvivalPlot/sensitivity_results2/settings.txt') ## need to change manually
+location = setting[29,]
+location = gsub('/y/','/', location) 
+quantile = read.csv(paste(location, 'quantile.csv', sep = ''))[,-1]
+quantile2 = quantile %>% filter(quantile == 0.85)
+Time_End = round_func(quantile2$quantile_mean, mean_min = 'min') %>% as.numeric() %>% round(2)
+time_vec = seq(0.05,0.5,0.05) %>% as.numeric() %>% round(2)
+ind = which(time_vec == Time_End)
+original_stat = read.csv(paste(location, 'original_statistic', ind, '.csv', sep = ''))[,-1]
+stat_list = readRDS(paste(location, 'stat_list', ind, '.rds', sep = ''))
+
+lambda = setting[21,] %>% as.numeric()
+rho = setting[23,] %>% as.numeric()
+beta1 = setting[13,] %>% as.numeric()
+beta2 = setting[14,] %>% as.numeric()
+beta3 = setting[15,] %>% as.numeric()
+
+C_Survival_weibull1 = function(t) {
+  1-exp(-lambda*(t^rho)*exp(beta1))
+}
+
+C_Survival_weibull2 = function(t) {
+  1-exp(-lambda*(t^rho)*exp(beta2))
+}
+
+C_Survival_weibull3 = function(t) {
+  1-exp(-lambda*(t^rho)*exp(beta3))
+}
+
+
+True_AUC1 = integrate(C_Survival_weibull1, 0, Time_End)$value
+True_AUC2 = integrate(C_Survival_weibull2, 0, Time_End)$value
+True_AUC3 = integrate(C_Survival_weibull3, 0, Time_End)$value
+
+bias_df5 = data.frame(IMC0 = original_stat[,1] - True_AUC1,
+                     IMC1 = original_stat[,2] - True_AUC2,
+                     IMC2 = original_stat[,3] - True_AUC3) %>% 
+  pivot_longer(1:3,
+               names_to = 'Stage',
+               values_to = 'Bias') %>% 
+  mutate(Scenario = 'S1',  n='n=500', method = 'Proposed')
+```
+
+```{r}
+# n=500 Scenario2
+setting = read.delim('/storage/work/yqs5519/SurvivalPlot/sensitivity_results3/settings.txt') ## need to change manually
+location = setting[29,]
+location = gsub('/y/','/', location) 
+quantile = read.csv(paste(location, 'quantile.csv', sep = ''))[,-1]
+quantile2 = quantile %>% filter(quantile == 0.85)
+Time_End = round_func(quantile2$quantile_mean, mean_min = 'min') %>% as.numeric() %>% round(2)
+time_vec = seq(0.05,0.5,0.05) %>% as.numeric() %>% round(2)
+ind = which(time_vec == Time_End)
+original_stat = read.csv(paste(location, 'original_statistic', ind, '.csv', sep = ''))[,-1]
+stat_list = readRDS(paste(location, 'stat_list', ind, '.rds', sep = ''))
+
+lambda = setting[21,] %>% as.numeric()
+rho = setting[23,] %>% as.numeric()
+beta1 = setting[13,] %>% as.numeric()
+beta2 = setting[14,] %>% as.numeric()
+beta3 = setting[15,] %>% as.numeric()
+
+C_Survival_weibull1 = function(t) {
+  1-exp(-lambda*(t^rho)*exp(beta1))
+}
+
+C_Survival_weibull2 = function(t) {
+  1-exp(-lambda*(t^rho)*exp(beta2))
+}
+
+C_Survival_weibull3 = function(t) {
+  1-exp(-lambda*(t^rho)*exp(beta3))
+}
+
+
+True_AUC1 = integrate(C_Survival_weibull1, 0, Time_End)$value
+True_AUC2 = integrate(C_Survival_weibull2, 0, Time_End)$value
+True_AUC3 = integrate(C_Survival_weibull3, 0, Time_End)$value
+
+bias_df6 = data.frame(IMC0 = original_stat[,1] - True_AUC1,
+                     IMC1 = original_stat[,2] - True_AUC2,
+                     IMC2 = original_stat[,3] - True_AUC3) %>% 
+  pivot_longer(1:3,
+               names_to = 'Stage',
+               values_to = 'Bias') %>% 
+  mutate(Scenario = 'S2', n='n=500', method = 'Proposed')
+```
+
+```{r}
+# n=500 Scenario3
+setting = read.delim('/storage/work/yqs5519/SurvivalPlot/sensitivity_results14/settings.txt') ## need to change manually
+location = setting[29,]
+location = gsub('/y/','/', location) 
+quantile = read.csv(paste(location, 'quantile.csv', sep = ''))[,-1]
+quantile2 = quantile %>% filter(quantile == 0.85)
+Time_End = round_func(quantile2$quantile_mean, mean_min = 'min') %>% as.numeric() %>% round(2)
+time_vec = seq(0.05,0.5,0.05) %>% as.numeric() %>% round(2)
+ind = which(time_vec == Time_End)
+original_stat = read.csv(paste(location, 'original_statistic', ind, '.csv', sep = ''))[,-1]
+stat_list = readRDS(paste(location, 'stat_list', ind, '.rds', sep = ''))
+
+lambda = setting[21,] %>% as.numeric()
+rho = setting[23,] %>% as.numeric()
+beta1 = setting[13,] %>% as.numeric()
+beta2 = setting[14,] %>% as.numeric()
+beta3 = setting[15,] %>% as.numeric()
+
+C_Survival_weibull1 = function(t) {
+  1-exp(-lambda*(t^rho)*exp(beta1))
+}
+
+C_Survival_weibull2 = function(t) {
+  1-exp(-lambda*(t^rho)*exp(beta2))
+}
+
+C_Survival_weibull3 = function(t) {
+  1-exp(-lambda*(t^rho)*exp(beta3))
+}
+
+
+True_AUC1 = integrate(C_Survival_weibull1, 0, Time_End)$value
+True_AUC2 = integrate(C_Survival_weibull2, 0, Time_End)$value
+True_AUC3 = integrate(C_Survival_weibull3, 0, Time_End)$value
+
+bias_df7 = data.frame(IMC0 = original_stat[,1] - True_AUC1,
+                     IMC1 = original_stat[,2] - True_AUC2,
+                     IMC2 = original_stat[,3] - True_AUC3) %>% 
+  pivot_longer(1:3,
+               names_to = 'Stage',
+               values_to = 'Bias') %>% 
+  mutate(Scenario = 'S3',  n='n=500', method = 'Proposed')
+```
+
+```{r}
+# n=500 Scenario4
+setting = read.delim('/storage/work/yqs5519/SurvivalPlot/sensitivity_results4/settings.txt') ## need to change manually
+location = setting[29,]
+location = gsub('/y/','/', location) 
+quantile = read.csv(paste(location, 'quantile.csv', sep = ''))[,-1]
+quantile2 = quantile %>% filter(quantile == 0.85)
+Time_End = round_func(quantile2$quantile_mean, mean_min = 'min') %>% as.numeric() %>% round(2)
+time_vec = seq(0.05,0.5,0.05) %>% as.numeric() %>% round(2)
+ind = which(time_vec == Time_End)
+original_stat = read.csv(paste(location, 'original_statistic', ind, '.csv', sep = ''))[,-1]
+stat_list = readRDS(paste(location, 'stat_list', ind, '.rds', sep = ''))
+
+
+lambda = setting[21,] %>% as.numeric()
+rho = setting[23,] %>% as.numeric()
+beta1 = setting[13,] %>% as.numeric()
+beta2 = setting[14,] %>% as.numeric()
+beta3 = setting[15,] %>% as.numeric()
+
+C_Survival_weibull1 = function(t) {
+  1-exp(-lambda*(t^rho)*exp(beta1))
+}
+
+C_Survival_weibull2 = function(t) {
+  1-exp(-lambda*(t^rho)*exp(beta2))
+}
+
+C_Survival_weibull3 = function(t) {
+  1-exp(-lambda*(t^rho)*exp(beta3))
+}
+
+
+True_AUC1 = integrate(C_Survival_weibull1, 0, Time_End)$value
+True_AUC2 = integrate(C_Survival_weibull2, 0, Time_End)$value
+True_AUC3 = integrate(C_Survival_weibull3, 0, Time_End)$value
+
+bias_df8 = data.frame(IMC0 = original_stat[,1] - True_AUC1,
+                     IMC1 = original_stat[,2] - True_AUC2,
+                     IMC2 = original_stat[,3] - True_AUC3) %>% 
+  pivot_longer(1:3,
+               names_to = 'Stage',
+               values_to = 'Bias') %>% 
+  mutate(Scenario = 'S4',  n='n=500', method = 'Proposed')
+boxplot(bias_df4$Bias[bias_df4$Stage == 'IMC2'],  ylim = c(-0.05, 0.05))
+boxplot(bias_df8$Bias[bias_df8$Stage == 'IMC2'],  ylim = c(-0.05, 0.05))
+
+(bias_df4$Bias[bias_df4$Stage == 'IMC2'])^2 %>% mean() %>% sqrt()
+(bias_df8$Bias[bias_df8$Stage == 'IMC2'])^2 %>% mean() %>% sqrt()
+```
+
+<!-- ## No censor -->
+
+<!-- ```{r} -->
+<!-- # n=200 Scenario1 -->
+
+<!-- setting = read.delim('/storage/work/yqs5519/SurvivalPlot/sensitivity_results7/settings.txt') ## need to change manually -->
+<!-- location = setting[29,] -->
+<!-- location = gsub('/y/','/', location)  -->
+<!-- quantile = read.csv(paste(location, 'quantile.csv', sep = ''))[,-1] -->
+<!-- quantile2 = quantile %>% filter(quantile == 0.85) -->
+<!-- Time_End = round_func(quantile2$quantile_mean, mean_min = 'min') %>% as.numeric() %>% round(2) -->
+<!-- time_vec = seq(0.05,0.5,0.05) %>% as.numeric() %>% round(2) -->
+<!-- ind = which(time_vec == Time_End) -->
+<!-- original_stat = read.csv(paste(location, 'original_statistic', ind, '.csv', sep = ''))[,-1] -->
+<!-- stat_list = readRDS(paste(location, 'stat_list', ind, '.rds', sep = '')) -->
+
+
+
+<!-- lambda = setting[21,] %>% as.numeric() -->
+<!-- rho = setting[23,] %>% as.numeric() -->
+<!-- beta1 = setting[13,] %>% as.numeric() -->
+<!-- beta2 = setting[14,] %>% as.numeric() -->
+<!-- beta3 = setting[15,] %>% as.numeric() -->
+
+<!-- C_Survival_weibull1 = function(t) { -->
+<!--   1-exp(-lambda*(t^rho)*exp(beta1)) -->
+<!-- } -->
+
+<!-- C_Survival_weibull2 = function(t) { -->
+<!--   1-exp(-lambda*(t^rho)*exp(beta2)) -->
+<!-- } -->
+
+<!-- C_Survival_weibull3 = function(t) { -->
+<!--   1-exp(-lambda*(t^rho)*exp(beta3)) -->
+<!-- } -->
+
+
+<!-- True_AUC1 = integrate(C_Survival_weibull1, 0, Time_End)$value -->
+<!-- True_AUC2 = integrate(C_Survival_weibull2, 0, Time_End)$value -->
+<!-- True_AUC3 = integrate(C_Survival_weibull3, 0, Time_End)$value -->
+
+<!-- bias_df9 = data.frame(IMC0 = original_stat[,1] - True_AUC1, -->
+<!--                      IMC1 = original_stat[,2] - True_AUC2, -->
+<!--                      IMC2 = original_stat[,3] - True_AUC3) %>% -->
+<!--   pivot_longer(1:3, -->
+<!--                names_to = 'Stage', -->
+<!--                values_to = 'Bias') %>% -->
+<!--   mutate(Scenario = 'Scenario1',  n='n=200', method = 'Without Censor') -->
+<!-- ``` -->
+
+<!-- ```{r} -->
+<!-- # n=200 Scenario2 -->
+
+<!-- setting = read.delim('/storage/work/yqs5519/SurvivalPlot/sensitivity_results8/settings.txt') ## need to change manually -->
+<!-- location = setting[29,] -->
+<!-- location = gsub('/y/','/', location)  -->
+<!-- quantile = read.csv(paste(location, 'quantile.csv', sep = ''))[,-1] -->
+<!-- quantile2 = quantile %>% filter(quantile == 0.85) -->
+<!-- Time_End = round_func(quantile2$quantile_mean, mean_min = 'min') %>% as.numeric() %>% round(2) -->
+<!-- time_vec = seq(0.05,0.5,0.05) %>% as.numeric() %>% round(2) -->
+<!-- ind = which(time_vec == Time_End) -->
+<!-- original_stat = read.csv(paste(location, 'original_statistic', ind, '.csv', sep = ''))[,-1] -->
+<!-- stat_list = readRDS(paste(location, 'stat_list', ind, '.rds', sep = '')) -->
+
+<!-- lambda = setting[21,] %>% as.numeric() -->
+<!-- rho = setting[23,] %>% as.numeric() -->
+<!-- beta1 = setting[13,] %>% as.numeric() -->
+<!-- beta2 = setting[14,] %>% as.numeric() -->
+<!-- beta3 = setting[15,] %>% as.numeric() -->
+
+<!-- C_Survival_weibull1 = function(t) { -->
+<!--   1-exp(-lambda*(t^rho)*exp(beta1)) -->
+<!-- } -->
+
+<!-- C_Survival_weibull2 = function(t) { -->
+<!--   1-exp(-lambda*(t^rho)*exp(beta2)) -->
+<!-- } -->
+
+<!-- C_Survival_weibull3 = function(t) { -->
+<!--   1-exp(-lambda*(t^rho)*exp(beta3)) -->
+<!-- } -->
+
+
+<!-- True_AUC1 = integrate(C_Survival_weibull1, 0, Time_End)$value -->
+<!-- True_AUC2 = integrate(C_Survival_weibull2, 0, Time_End)$value -->
+<!-- True_AUC3 = integrate(C_Survival_weibull3, 0, Time_End)$value -->
+
+<!-- bias_df10 = data.frame(IMC0 = original_stat[,1] - True_AUC1, -->
+<!--                      IMC1 = original_stat[,2] - True_AUC2, -->
+<!--                      IMC2 = original_stat[,3] - True_AUC3) %>% -->
+<!--   pivot_longer(1:3, -->
+<!--                names_to = 'Stage', -->
+<!--                values_to = 'Bias') %>% -->
+<!--   mutate(Scenario = 'Scenario2',  n='n=200', method = 'Without Censor') -->
+<!-- ``` -->
+
+<!-- ```{r} -->
+<!-- # n=200 Scenario3 -->
+<!-- setting = read.delim('/storage/work/yqs5519/SurvivalPlot/sensitivity_results15/settings.txt') ## need to change manually -->
+<!-- location = setting[29,] -->
+<!-- location = gsub('/y/','/', location)  -->
+<!-- quantile = read.csv(paste(location, 'quantile.csv', sep = ''))[,-1] -->
+<!-- quantile2 = quantile %>% filter(quantile == 0.85) -->
+<!-- Time_End = round_func(quantile2$quantile_mean, mean_min = 'min') %>% as.numeric() %>% round(2) -->
+<!-- time_vec = seq(0.05,0.5,0.05) %>% as.numeric() %>% round(2) -->
+<!-- ind = which(time_vec == Time_End) -->
+<!-- original_stat = read.csv(paste(location, 'original_statistic', ind, '.csv', sep = ''))[,-1] -->
+<!-- stat_list = readRDS(paste(location, 'stat_list', ind, '.rds', sep = '')) -->
+
+
+
+<!-- lambda = setting[21,] %>% as.numeric() -->
+<!-- rho = setting[23,] %>% as.numeric() -->
+<!-- beta1 = setting[13,] %>% as.numeric() -->
+<!-- beta2 = setting[14,] %>% as.numeric() -->
+<!-- beta3 = setting[15,] %>% as.numeric() -->
+
+<!-- C_Survival_weibull1 = function(t) { -->
+<!--   1-exp(-lambda*(t^rho)*exp(beta1)) -->
+<!-- } -->
+
+<!-- C_Survival_weibull2 = function(t) { -->
+<!--   1-exp(-lambda*(t^rho)*exp(beta2)) -->
+<!-- } -->
+
+<!-- C_Survival_weibull3 = function(t) { -->
+<!--   1-exp(-lambda*(t^rho)*exp(beta3)) -->
+<!-- } -->
+
+
+<!-- True_AUC1 = integrate(C_Survival_weibull1, 0, Time_End)$value -->
+<!-- True_AUC2 = integrate(C_Survival_weibull2, 0, Time_End)$value -->
+<!-- True_AUC3 = integrate(C_Survival_weibull3, 0, Time_End)$value -->
+
+<!-- bias_df11 = data.frame(IMC0 = original_stat[,1] - True_AUC1, -->
+<!--                      IMC1 = original_stat[,2] - True_AUC2, -->
+<!--                      IMC2 = original_stat[,3] - True_AUC3) %>% -->
+<!--   pivot_longer(1:3, -->
+<!--                names_to = 'Stage', -->
+<!--                values_to = 'Bias') %>% -->
+<!--   mutate(Scenario = 'Scenario3',  n='n=200', method = 'Without Censor') -->
+<!-- ``` -->
+
+<!-- ```{r} -->
+<!-- # n=200 Scenario4 -->
+<!-- setting = read.delim('/storage/work/yqs5519/SurvivalPlot/sensitivity_results9/settings.txt') ## need to change manually -->
+<!-- location = setting[29,] -->
+<!-- location = gsub('/y/','/', location)  -->
+<!-- quantile = read.csv(paste(location, 'quantile.csv', sep = ''))[,-1] -->
+<!-- quantile2 = quantile %>% filter(quantile == 0.85) -->
+<!-- Time_End = round_func(quantile2$quantile_mean, mean_min = 'min') %>% as.numeric() %>% round(2) -->
+<!-- time_vec = seq(0.05,0.5,0.05) %>% as.numeric() %>% round(2) -->
+<!-- ind = which(time_vec == Time_End) -->
+<!-- original_stat = read.csv(paste(location, 'original_statistic', ind, '.csv', sep = ''))[,-1] -->
+<!-- stat_list = readRDS(paste(location, 'stat_list', ind, '.rds', sep = '')) -->
+
+
+<!-- lambda = setting[21,] %>% as.numeric() -->
+<!-- rho = setting[23,] %>% as.numeric() -->
+<!-- beta1 = setting[13,] %>% as.numeric() -->
+<!-- beta2 = setting[14,] %>% as.numeric() -->
+<!-- beta3 = setting[15,] %>% as.numeric() -->
+
+<!-- C_Survival_weibull1 = function(t) { -->
+<!--   1-exp(-lambda*(t^rho)*exp(beta1)) -->
+<!-- } -->
+
+<!-- C_Survival_weibull2 = function(t) { -->
+<!--   1-exp(-lambda*(t^rho)*exp(beta2)) -->
+<!-- } -->
+
+<!-- C_Survival_weibull3 = function(t) { -->
+<!--   1-exp(-lambda*(t^rho)*exp(beta3)) -->
+<!-- } -->
+
+
+<!-- True_AUC1 = integrate(C_Survival_weibull1, 0, Time_End)$value -->
+<!-- True_AUC2 = integrate(C_Survival_weibull2, 0, Time_End)$value -->
+<!-- True_AUC3 = integrate(C_Survival_weibull3, 0, Time_End)$value -->
+
+<!-- bias_df12 = data.frame(IMC0 = original_stat[,1] - True_AUC1, -->
+<!--                      IMC1 = original_stat[,2] - True_AUC2, -->
+<!--                      IMC2 = original_stat[,3] - True_AUC3) %>% -->
+<!--   pivot_longer(1:3, -->
+<!--                names_to = 'Stage', -->
+<!--                values_to = 'Bias') %>% -->
+<!--   mutate(Scenario = 'Scenario4',  n='n=200', method = 'Without Censor') -->
+<!-- ``` -->
+
+
+<!-- ```{r} -->
+<!-- # n=500 Scenario1 -->
+<!-- setting = read.delim('/storage/work/yqs5519/SurvivalPlot/sensitivity_results10/settings.txt') ## need to change manually -->
+<!-- location = setting[29,] -->
+<!-- location = gsub('/y/','/', location)  -->
+<!-- quantile = read.csv(paste(location, 'quantile.csv', sep = ''))[,-1] -->
+<!-- quantile2 = quantile %>% filter(quantile == 0.85) -->
+<!-- Time_End = round_func(quantile2$quantile_mean, mean_min = 'min') %>% as.numeric() %>% round(2) -->
+<!-- time_vec = seq(0.05,0.5,0.05) %>% as.numeric() %>% round(2) -->
+<!-- ind = which(time_vec == Time_End) -->
+<!-- original_stat = read.csv(paste(location, 'original_statistic', ind, '.csv', sep = ''))[,-1] -->
+<!-- stat_list = readRDS(paste(location, 'stat_list', ind, '.rds', sep = '')) -->
+
+<!-- lambda = setting[21,] %>% as.numeric() -->
+<!-- rho = setting[23,] %>% as.numeric() -->
+<!-- beta1 = setting[13,] %>% as.numeric() -->
+<!-- beta2 = setting[14,] %>% as.numeric() -->
+<!-- beta3 = setting[15,] %>% as.numeric() -->
+
+<!-- C_Survival_weibull1 = function(t) { -->
+<!--   1-exp(-lambda*(t^rho)*exp(beta1)) -->
+<!-- } -->
+
+<!-- C_Survival_weibull2 = function(t) { -->
+<!--   1-exp(-lambda*(t^rho)*exp(beta2)) -->
+<!-- } -->
+
+<!-- C_Survival_weibull3 = function(t) { -->
+<!--   1-exp(-lambda*(t^rho)*exp(beta3)) -->
+<!-- } -->
+
+
+<!-- True_AUC1 = integrate(C_Survival_weibull1, 0, Time_End)$value -->
+<!-- True_AUC2 = integrate(C_Survival_weibull2, 0, Time_End)$value -->
+<!-- True_AUC3 = integrate(C_Survival_weibull3, 0, Time_End)$value -->
+
+<!-- bias_df13 = data.frame(IMC0 = original_stat[,1] - True_AUC1, -->
+<!--                      IMC1 = original_stat[,2] - True_AUC2, -->
+<!--                      IMC2 = original_stat[,3] - True_AUC3) %>% -->
+<!--   pivot_longer(1:3, -->
+<!--                names_to = 'Stage', -->
+<!--                values_to = 'Bias') %>% -->
+<!--   mutate(Scenario = 'Scenario1',  n='n=500', method = 'Without Censor') -->
+<!-- ``` -->
+
+<!-- ```{r} -->
+<!-- # n=500 Scenario2 -->
+<!-- setting = read.delim('/storage/work/yqs5519/SurvivalPlot/sensitivity_results11/settings.txt') ## need to change manually -->
+<!-- location = setting[29,] -->
+<!-- location = gsub('/y/','/', location)  -->
+<!-- quantile = read.csv(paste(location, 'quantile.csv', sep = ''))[,-1] -->
+<!-- quantile2 = quantile %>% filter(quantile == 0.85) -->
+<!-- Time_End = round_func(quantile2$quantile_mean, mean_min = 'min') %>% as.numeric() %>% round(2) -->
+<!-- time_vec = seq(0.05,0.5,0.05) %>% as.numeric() %>% round(2) -->
+<!-- ind = which(time_vec == Time_End) -->
+<!-- original_stat = read.csv(paste(location, 'original_statistic', ind, '.csv', sep = ''))[,-1] -->
+<!-- stat_list = readRDS(paste(location, 'stat_list', ind, '.rds', sep = '')) -->
+
+<!-- lambda = setting[21,] %>% as.numeric() -->
+<!-- rho = setting[23,] %>% as.numeric() -->
+<!-- beta1 = setting[13,] %>% as.numeric() -->
+<!-- beta2 = setting[14,] %>% as.numeric() -->
+<!-- beta3 = setting[15,] %>% as.numeric() -->
+
+<!-- C_Survival_weibull1 = function(t) { -->
+<!--   1-exp(-lambda*(t^rho)*exp(beta1)) -->
+<!-- } -->
+
+<!-- C_Survival_weibull2 = function(t) { -->
+<!--   1-exp(-lambda*(t^rho)*exp(beta2)) -->
+<!-- } -->
+
+<!-- C_Survival_weibull3 = function(t) { -->
+<!--   1-exp(-lambda*(t^rho)*exp(beta3)) -->
+<!-- } -->
+
+
+<!-- True_AUC1 = integrate(C_Survival_weibull1, 0, Time_End)$value -->
+<!-- True_AUC2 = integrate(C_Survival_weibull2, 0, Time_End)$value -->
+<!-- True_AUC3 = integrate(C_Survival_weibull3, 0, Time_End)$value -->
+
+<!-- bias_df14 = data.frame(IMC0 = original_stat[,1] - True_AUC1, -->
+<!--                      IMC1 = original_stat[,2] - True_AUC2, -->
+<!--                      IMC2 = original_stat[,3] - True_AUC3) %>% -->
+<!--   pivot_longer(1:3, -->
+<!--                names_to = 'Stage', -->
+<!--                values_to = 'Bias') %>% -->
+<!--   mutate(Scenario = 'Scenario2', n='n=500', method = 'Without Censor') -->
+<!-- ``` -->
+
+<!-- ```{r} -->
+<!-- # n=500 Scenario3 -->
+<!-- setting = read.delim('/storage/work/yqs5519/SurvivalPlot/sensitivity_results16/settings.txt') ## need to change manually -->
+<!-- location = setting[29,] -->
+<!-- location = gsub('/y/','/', location)  -->
+<!-- quantile = read.csv(paste(location, 'quantile.csv', sep = ''))[,-1] -->
+<!-- quantile2 = quantile %>% filter(quantile == 0.85) -->
+<!-- Time_End = round_func(quantile2$quantile_mean, mean_min = 'min') %>% as.numeric() %>% round(2) -->
+<!-- time_vec = seq(0.05,0.5,0.05) %>% as.numeric() %>% round(2) -->
+<!-- ind = which(time_vec == Time_End) -->
+<!-- original_stat = read.csv(paste(location, 'original_statistic', ind, '.csv', sep = ''))[,-1] -->
+<!-- stat_list = readRDS(paste(location, 'stat_list', ind, '.rds', sep = '')) -->
+
+<!-- lambda = setting[21,] %>% as.numeric() -->
+<!-- rho = setting[23,] %>% as.numeric() -->
+<!-- beta1 = setting[13,] %>% as.numeric() -->
+<!-- beta2 = setting[14,] %>% as.numeric() -->
+<!-- beta3 = setting[15,] %>% as.numeric() -->
+
+<!-- C_Survival_weibull1 = function(t) { -->
+<!--   1-exp(-lambda*(t^rho)*exp(beta1)) -->
+<!-- } -->
+
+<!-- C_Survival_weibull2 = function(t) { -->
+<!--   1-exp(-lambda*(t^rho)*exp(beta2)) -->
+<!-- } -->
+
+<!-- C_Survival_weibull3 = function(t) { -->
+<!--   1-exp(-lambda*(t^rho)*exp(beta3)) -->
+<!-- } -->
+
+
+<!-- True_AUC1 = integrate(C_Survival_weibull1, 0, Time_End)$value -->
+<!-- True_AUC2 = integrate(C_Survival_weibull2, 0, Time_End)$value -->
+<!-- True_AUC3 = integrate(C_Survival_weibull3, 0, Time_End)$value -->
+
+<!-- bias_df15 = data.frame(IMC0 = original_stat[,1] - True_AUC1, -->
+<!--                      IMC1 = original_stat[,2] - True_AUC2, -->
+<!--                      IMC2 = original_stat[,3] - True_AUC3) %>% -->
+<!--   pivot_longer(1:3, -->
+<!--                names_to = 'Stage', -->
+<!--                values_to = 'Bias') %>% -->
+<!--   mutate(Scenario = 'Scenario3',  n='n=500', method = 'Without Censor') -->
+<!-- ``` -->
+
+<!-- ```{r} -->
+<!-- # n=500 Scenario4 -->
+<!-- setting = read.delim('/storage/work/yqs5519/SurvivalPlot/sensitivity_results12/settings.txt') ## need to change manually -->
+<!-- location = setting[29,] -->
+<!-- location = gsub('/y/','/', location)  -->
+<!-- quantile = read.csv(paste(location, 'quantile.csv', sep = ''))[,-1] -->
+<!-- quantile2 = quantile %>% filter(quantile == 0.85) -->
+<!-- Time_End = round_func(quantile2$quantile_mean, mean_min = 'min') %>% as.numeric() %>% round(2) -->
+<!-- time_vec = seq(0.05,0.5,0.05) %>% as.numeric() %>% round(2) -->
+<!-- ind = which(time_vec == Time_End) -->
+<!-- original_stat = read.csv(paste(location, 'original_statistic', ind, '.csv', sep = ''))[,-1] -->
+<!-- stat_list = readRDS(paste(location, 'stat_list', ind, '.rds', sep = '')) -->
+
+<!-- lambda = setting[21,] %>% as.numeric() -->
+<!-- rho = setting[23,] %>% as.numeric() -->
+<!-- beta1 = setting[13,] %>% as.numeric() -->
+<!-- beta2 = setting[14,] %>% as.numeric() -->
+<!-- beta3 = setting[15,] %>% as.numeric() -->
+
+<!-- C_Survival_weibull1 = function(t) { -->
+<!--   1-exp(-lambda*(t^rho)*exp(beta1)) -->
+<!-- } -->
+
+<!-- C_Survival_weibull2 = function(t) { -->
+<!--   1-exp(-lambda*(t^rho)*exp(beta2)) -->
+<!-- } -->
+
+<!-- C_Survival_weibull3 = function(t) { -->
+<!--   1-exp(-lambda*(t^rho)*exp(beta3)) -->
+<!-- } -->
+
+
+<!-- True_AUC1 = integrate(C_Survival_weibull1, 0, Time_End)$value -->
+<!-- True_AUC2 = integrate(C_Survival_weibull2, 0, Time_End)$value -->
+<!-- True_AUC3 = integrate(C_Survival_weibull3, 0, Time_End)$value -->
+
+<!-- bias_df16 = data.frame(IMC0 = original_stat[,1] - True_AUC1, -->
+<!--                      IMC1 = original_stat[,2] - True_AUC2, -->
+<!--                      IMC2 = original_stat[,3] - True_AUC3) %>% -->
+<!--   pivot_longer(1:3, -->
+<!--                names_to = 'Stage', -->
+<!--                values_to = 'Bias') %>% -->
+<!--   mutate(Scenario = 'Scenario4',  n='n=500', method = 'Without Censor') -->
+<!-- ``` -->
+
+## No Calibration + With censor
+
+```{r}
+# n=200 Scenario1
+
+setting = read.delim('/storage/work/yqs5519/SurvivalPlot/noCalibration9/settings.txt') ## need to change manually
+location = setting[29,]
+Time_End = setting[3,] %>% as.numeric()
+original_stat = read.csv(paste(location, 'original_statistic.csv', sep = ''))[,-1]
+stat_list = readRDS(paste(location, 'stat_list.rds', sep = ''))
+
+
+
+lambda = setting[21,] %>% as.numeric()
+rho = setting[23,] %>% as.numeric()
+beta1 = setting[13,] %>% as.numeric()
+beta2 = setting[14,] %>% as.numeric()
+beta3 = setting[15,] %>% as.numeric()
+
+C_Survival_weibull1 = function(t) {
+  1-exp(-lambda*(t^rho)*exp(beta1))
+}
+
+C_Survival_weibull2 = function(t) {
+  1-exp(-lambda*(t^rho)*exp(beta2))
+}
+
+C_Survival_weibull3 = function(t) {
+  1-exp(-lambda*(t^rho)*exp(beta3))
+}
+
+
+True_AUC1 = integrate(C_Survival_weibull1, 0, Time_End)$value
+True_AUC2 = integrate(C_Survival_weibull2, 0, Time_End)$value
+True_AUC3 = integrate(C_Survival_weibull3, 0, Time_End)$value
+
+bias_df9 = data.frame(IMC0 = original_stat[,1] - True_AUC1,
+                     IMC1 = original_stat[,2] - True_AUC2,
+                     IMC2 = original_stat[,3] - True_AUC3) %>%
+  pivot_longer(1:3,
+               names_to = 'Stage',
+               values_to = 'Bias') %>%
+  mutate(Scenario = 'S1',  n='n=200', method = 'Naive')
+```
+
+```{r}
+# n=200 Scenario2
+
+setting = read.delim('/storage/work/yqs5519/SurvivalPlot/noCalibration2/settings.txt') ## need to change manually
+location = setting[29,]
+Time_End = setting[3,] %>% as.numeric()
+original_stat = read.csv(paste(location, 'original_statistic.csv', sep = ''))[,-1]
+stat_list = readRDS(paste(location, 'stat_list.rds', sep = ''))
+
+
+lambda = setting[21,] %>% as.numeric()
+rho = setting[23,] %>% as.numeric()
+beta1 = setting[13,] %>% as.numeric()
+beta2 = setting[14,] %>% as.numeric()
+beta3 = setting[15,] %>% as.numeric()
+
+C_Survival_weibull1 = function(t) {
+  1-exp(-lambda*(t^rho)*exp(beta1))
+}
+
+C_Survival_weibull2 = function(t) {
+  1-exp(-lambda*(t^rho)*exp(beta2))
+}
+
+C_Survival_weibull3 = function(t) {
+  1-exp(-lambda*(t^rho)*exp(beta3))
+}
+
+
+True_AUC1 = integrate(C_Survival_weibull1, 0, Time_End)$value
+True_AUC2 = integrate(C_Survival_weibull2, 0, Time_End)$value
+True_AUC3 = integrate(C_Survival_weibull3, 0, Time_End)$value
+
+bias_df10 = data.frame(IMC0 = original_stat[,1] - True_AUC1,
+                     IMC1 = original_stat[,2] - True_AUC2,
+                     IMC2 = original_stat[,3] - True_AUC3) %>%
+  pivot_longer(1:3,
+               names_to = 'Stage',
+               values_to = 'Bias') %>%
+  mutate(Scenario = 'S2',  n='n=200', method = 'Naive')
+```
+
+```{r}
+# n=200 Scenario3
+setting = read.delim('/storage/work/yqs5519/SurvivalPlot/noCalibration3/settings.txt') ## need to change manually
+location = setting[29,]
+Time_End = setting[3,] %>% as.numeric()
+original_stat = read.csv(paste(location, 'original_statistic.csv', sep = ''))[,-1]
+stat_list = readRDS(paste(location, 'stat_list.rds', sep = ''))
+
+
+
+
+lambda = setting[21,] %>% as.numeric()
+rho = setting[23,] %>% as.numeric()
+beta1 = setting[13,] %>% as.numeric()
+beta2 = setting[14,] %>% as.numeric()
+beta3 = setting[15,] %>% as.numeric()
+
+C_Survival_weibull1 = function(t) {
+  1-exp(-lambda*(t^rho)*exp(beta1))
+}
+
+C_Survival_weibull2 = function(t) {
+  1-exp(-lambda*(t^rho)*exp(beta2))
+}
+
+C_Survival_weibull3 = function(t) {
+  1-exp(-lambda*(t^rho)*exp(beta3))
+}
+
+
+True_AUC1 = integrate(C_Survival_weibull1, 0, Time_End)$value
+True_AUC2 = integrate(C_Survival_weibull2, 0, Time_End)$value
+True_AUC3 = integrate(C_Survival_weibull3, 0, Time_End)$value
+
+bias_df11 = data.frame(IMC0 = original_stat[,1] - True_AUC1,
+                     IMC1 = original_stat[,2] - True_AUC2,
+                     IMC2 = original_stat[,3] - True_AUC3) %>%
+  pivot_longer(1:3,
+               names_to = 'Stage',
+               values_to = 'Bias') %>%
+  mutate(Scenario = 'S3',  n='n=200', method = 'Naive')
+```
+
+```{r}
+# n=200 Scenario4
+setting = read.delim('/storage/work/yqs5519/SurvivalPlot/noCalibration10/settings.txt') ## need to change manually
+location = setting[29,]
+Time_End = setting[3,] %>% as.numeric()
+original_stat = read.csv(paste(location, 'original_statistic.csv', sep = ''))[,-1]
+stat_list = readRDS(paste(location, 'stat_list.rds', sep = ''))
+
+
+
+lambda = setting[21,] %>% as.numeric()
+rho = setting[23,] %>% as.numeric()
+beta1 = setting[13,] %>% as.numeric()
+beta2 = setting[14,] %>% as.numeric()
+beta3 = setting[15,] %>% as.numeric()
+
+C_Survival_weibull1 = function(t) {
+  1-exp(-lambda*(t^rho)*exp(beta1))
+}
+
+C_Survival_weibull2 = function(t) {
+  1-exp(-lambda*(t^rho)*exp(beta2))
+}
+
+C_Survival_weibull3 = function(t) {
+  1-exp(-lambda*(t^rho)*exp(beta3))
+}
+
+
+True_AUC1 = integrate(C_Survival_weibull1, 0, Time_End)$value
+True_AUC2 = integrate(C_Survival_weibull2, 0, Time_End)$value
+True_AUC3 = integrate(C_Survival_weibull3, 0, Time_End)$value
+
+bias_df12 = data.frame(IMC0 = original_stat[,1] - True_AUC1,
+                     IMC1 = original_stat[,2] - True_AUC2,
+                     IMC2 = original_stat[,3] - True_AUC3) %>%
+  pivot_longer(1:3,
+               names_to = 'Stage',
+               values_to = 'Bias') %>%
+  mutate(Scenario = 'S4',  n='n=200', method = 'Naive')
+```
+
+
+```{r}
+# n=500 Scenario1
+setting = read.delim('/storage/work/yqs5519/SurvivalPlot/noCalibration5/settings.txt') ## need to change manually
+location = setting[29,]
+Time_End = setting[3,] %>% as.numeric()
+original_stat = read.csv(paste(location, 'original_statistic.csv', sep = ''))[,-1]
+stat_list = readRDS(paste(location, 'stat_list.rds', sep = ''))
+
+
+lambda = setting[21,] %>% as.numeric()
+rho = setting[23,] %>% as.numeric()
+beta1 = setting[13,] %>% as.numeric()
+beta2 = setting[14,] %>% as.numeric()
+beta3 = setting[15,] %>% as.numeric()
+
+C_Survival_weibull1 = function(t) {
+  1-exp(-lambda*(t^rho)*exp(beta1))
+}
+
+C_Survival_weibull2 = function(t) {
+  1-exp(-lambda*(t^rho)*exp(beta2))
+}
+
+C_Survival_weibull3 = function(t) {
+  1-exp(-lambda*(t^rho)*exp(beta3))
+}
+
+
+True_AUC1 = integrate(C_Survival_weibull1, 0, Time_End)$value
+True_AUC2 = integrate(C_Survival_weibull2, 0, Time_End)$value
+True_AUC3 = integrate(C_Survival_weibull3, 0, Time_End)$value
+
+bias_df13 = data.frame(IMC0 = original_stat[,1] - True_AUC1,
+                     IMC1 = original_stat[,2] - True_AUC2,
+                     IMC2 = original_stat[,3] - True_AUC3) %>%
+  pivot_longer(1:3,
+               names_to = 'Stage',
+               values_to = 'Bias') %>%
+  mutate(Scenario = 'S1',  n='n=500', method = 'Naive')
+```
+
+```{r}
+# n=500 Scenario2
+setting = read.delim('/storage/work/yqs5519/SurvivalPlot/noCalibration6/settings.txt') ## need to change manually
+location = setting[29,]
+Time_End = setting[3,] %>% as.numeric()
+original_stat = read.csv(paste(location, 'original_statistic.csv', sep = ''))[,-1]
+stat_list = readRDS(paste(location, 'stat_list.rds', sep = ''))
+
+
+lambda = setting[21,] %>% as.numeric()
+rho = setting[23,] %>% as.numeric()
+beta1 = setting[13,] %>% as.numeric()
+beta2 = setting[14,] %>% as.numeric()
+beta3 = setting[15,] %>% as.numeric()
+
+C_Survival_weibull1 = function(t) {
+  1-exp(-lambda*(t^rho)*exp(beta1))
+}
+
+C_Survival_weibull2 = function(t) {
+  1-exp(-lambda*(t^rho)*exp(beta2))
+}
+
+C_Survival_weibull3 = function(t) {
+  1-exp(-lambda*(t^rho)*exp(beta3))
+}
+
+
+True_AUC1 = integrate(C_Survival_weibull1, 0, Time_End)$value
+True_AUC2 = integrate(C_Survival_weibull2, 0, Time_End)$value
+True_AUC3 = integrate(C_Survival_weibull3, 0, Time_End)$value
+
+bias_df14 = data.frame(IMC0 = original_stat[,1] - True_AUC1,
+                     IMC1 = original_stat[,2] - True_AUC2,
+                     IMC2 = original_stat[,3] - True_AUC3) %>%
+  pivot_longer(1:3,
+               names_to = 'Stage',
+               values_to = 'Bias') %>%
+  mutate(Scenario = 'S2', n='n=500', method = 'Naive')
+```
+
+```{r}
+# n=500 Scenario3
+setting = read.delim('/storage/work/yqs5519/SurvivalPlot/noCalibration7/settings.txt') ## need to change manually
+location = setting[29,]
+Time_End = setting[3,] %>% as.numeric()
+original_stat = read.csv(paste(location, 'original_statistic.csv', sep = ''))[,-1]
+stat_list = readRDS(paste(location, 'stat_list.rds', sep = ''))
+
+
+lambda = setting[21,] %>% as.numeric()
+rho = setting[23,] %>% as.numeric()
+beta1 = setting[13,] %>% as.numeric()
+beta2 = setting[14,] %>% as.numeric()
+beta3 = setting[15,] %>% as.numeric()
+
+C_Survival_weibull1 = function(t) {
+  1-exp(-lambda*(t^rho)*exp(beta1))
+}
+
+C_Survival_weibull2 = function(t) {
+  1-exp(-lambda*(t^rho)*exp(beta2))
+}
+
+C_Survival_weibull3 = function(t) {
+  1-exp(-lambda*(t^rho)*exp(beta3))
+}
+
+
+True_AUC1 = integrate(C_Survival_weibull1, 0, Time_End)$value
+True_AUC2 = integrate(C_Survival_weibull2, 0, Time_End)$value
+True_AUC3 = integrate(C_Survival_weibull3, 0, Time_End)$value
+
+bias_df15 = data.frame(IMC0 = original_stat[,1] - True_AUC1,
+                     IMC1 = original_stat[,2] - True_AUC2,
+                     IMC2 = original_stat[,3] - True_AUC3) %>%
+  pivot_longer(1:3,
+               names_to = 'Stage',
+               values_to = 'Bias') %>%
+  mutate(Scenario = 'S3',  n='n=500', method = 'Naive')
+```
+
+```{r}
+# n=500 Scenario4
+setting = read.delim('/storage/work/yqs5519/SurvivalPlot/noCalibration8/settings.txt') ## need to change manually
+location = setting[29,]
+Time_End = setting[3,] %>% as.numeric()
+original_stat = read.csv(paste(location, 'original_statistic.csv', sep = ''))[,-1]
+stat_list = readRDS(paste(location, 'stat_list.rds', sep = ''))
+
+
+lambda = setting[21,] %>% as.numeric()
+rho = setting[23,] %>% as.numeric()
+beta1 = setting[13,] %>% as.numeric()
+beta2 = setting[14,] %>% as.numeric()
+beta3 = setting[15,] %>% as.numeric()
+
+C_Survival_weibull1 = function(t) {
+  1-exp(-lambda*(t^rho)*exp(beta1))
+}
+
+C_Survival_weibull2 = function(t) {
+  1-exp(-lambda*(t^rho)*exp(beta2))
+}
+
+C_Survival_weibull3 = function(t) {
+  1-exp(-lambda*(t^rho)*exp(beta3))
+}
+
+
+True_AUC1 = integrate(C_Survival_weibull1, 0, Time_End)$value
+True_AUC2 = integrate(C_Survival_weibull2, 0, Time_End)$value
+True_AUC3 = integrate(C_Survival_weibull3, 0, Time_End)$value
+
+bias_df16 = data.frame(IMC0 = original_stat[,1] - True_AUC1,
+                     IMC1 = original_stat[,2] - True_AUC2,
+                     IMC2 = original_stat[,3] - True_AUC3) %>%
+  pivot_longer(1:3,
+               names_to = 'Stage',
+               values_to = 'Bias') %>%
+  mutate(Scenario = 'S4',  n='n=500', method = 'Naive')
+```
+
+
+## make plot
+
+
+```{r}
+## with Calibration
+bias_df_all = rbind(bias_df1, bias_df2, bias_df3, bias_df4, bias_df5, bias_df6, bias_df7, bias_df8) %>% 
+  mutate(Stage = case_when(
+    Stage == 'IMC0' ~ 'Stage0',
+    Stage == 'IMC1' ~ 'Stage1',
+    Stage == 'IMC2' ~ 'Stage2'
+  ))
+
+
+ggplot(bias_df_all) + 
+  geom_boxplot(aes(x = Scenario, y = Bias, color = Stage)) + 
+  geom_hline(yintercept=0, linetype="dashed", color = "red") + 
+  coord_cartesian(ylim = c(-0.05, 0.05)) +
+  theme_bw() +
+  facet_grid(~n)
+
+# ggsave("./report_figures/calibrate_bias_box.pdf", width = 6, height = 4)
+```
+
+```{r}
+## without Calibration
+bias_df_all = rbind(bias_df9, bias_df10, bias_df11, bias_df12, bias_df13, bias_df14, bias_df15, bias_df16) %>% 
+  mutate(Stage = case_when(
+    Stage == 'IMC0' ~ 'Stage0',
+    Stage == 'IMC1' ~ 'Stage1',
+    Stage == 'IMC2' ~ 'Stage2'
+  ))
+
+
+ggplot(bias_df_all) + 
+  geom_boxplot(aes(x = Scenario, y = Bias, color = Stage)) + 
+  geom_hline(yintercept=0, linetype="dashed", color = "red") + 
+  coord_cartesian(ylim = c(-0.05, 0.05)) +
+  theme_bw() +
+  facet_grid(~n)
+
+# ggsave("./report_figures/no_Calibration_bias_box.pdf", width = 6, height = 4)
+```
+
+```{r}
+## all in one plot
+bias_df_all = rbind(bias_df1, bias_df2, bias_df3, bias_df4, bias_df5, bias_df6, bias_df7, bias_df8
+                    ,bias_df9, bias_df10, bias_df11, bias_df12, bias_df13, bias_df14, bias_df15, bias_df16) %>% 
+  mutate(Stage = case_when(
+    Stage == 'IMC0' ~ 'Stage0',
+    Stage == 'IMC1' ~ 'Stage1',
+    Stage == 'IMC2' ~ 'Stage2'
+  )) %>% 
+  mutate(Bias = Bias * 30) %>% 
+  mutate(method = factor(method, levels = c('Proposed', 'Naive')))
+
+ggplot(bias_df_all) + 
+  geom_boxplot(aes(x = Scenario, y = Bias, color = Stage)) + 
+  geom_hline(yintercept=0, linetype="dashed", color = "red") + 
+  coord_cartesian(ylim = c(-1.5, 1.5)) +
+  # coord_cartesian(ylim = c(-1.5, 1.5)) +
+  theme_bw() +
+  theme(
+  text = element_text(size = 20),  # Set the base font size
+  axis.text = element_text(size = 20),  # Adjust axis text font size
+  axis.title = element_text(size = 20),  # Adjust axis title font size
+  strip.text = element_text(size = 20),  # Adjust facet strip text font size
+  # axis.text.x = element_text(angle = 45, hjust = 1)
+  ) + facet_grid(method~n)
+
+ggsave("./report_figures/both_bias_twoInone_box.pdf", width = 12, height = 8)
+```
+Need to change file location
+
+
+```{r}
+# bias_df_all = rbind(bias_df4, bias_df8) %>% 
+#   mutate(Stage = case_when(
+#     Stage == 'IMC0' ~ 'Stage0',
+#     Stage == 'IMC1' ~ 'Stage1',
+#     Stage == 'IMC2' ~ 'Stage2'
+#   )) %>% 
+#   mutate(Bias = Bias * 100)
+# 
+# ggplot(bias_df_all) + 
+#   geom_boxplot(aes(x = Scenario, y = Bias, color = Stage)) + 
+#   geom_hline(yintercept=0, linetype="dashed", color = "red") + 
+#   # coord_cartesian(ylim = c(-0.05, 0.05)) +
+#   coord_cartesian(ylim = c(-5, 5)) +
+#   theme_bw() +
+#   theme(
+#   text = element_text(size = 20),  # Set the base font size
+#   axis.text = element_text(size = 20),  # Adjust axis text font size
+#   axis.title = element_text(size = 20),  # Adjust axis title font size
+#   strip.text = element_text(size = 20),  # Adjust facet strip text font size
+#   axis.text.x = element_text(angle = 45, hjust = 1)
+#   ) + facet_grid(method~n)
+
+
+
+```
+

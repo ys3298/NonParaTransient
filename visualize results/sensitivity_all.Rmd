@@ -1,0 +1,958 @@
+---
+title: "sensitivity_visual"
+output: html_document
+date: "2023-10-29"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F, warning=FALSE, message=FALSE, echo=FALSE)
+library(tidyverse)
+library("survminer")
+library("cmprsk")
+library(rsample)
+library(knitr)
+library(kableExtra)
+source('/storage/work/yqs5519/SurvivalPlot/algorithm/CI_functions.R')
+source('/storage/work/yqs5519/SurvivalPlot/algorithm/generate_data.R')
+```
+
+```{r}
+# n = 200
+location1 = '/storage/work/yqs5519/SurvivalPlot/sensitivity_results1/settings.txt'
+location2 = '/storage/work/yqs5519/SurvivalPlot/sensitivity_results5/settings.txt'
+location3 = '/storage/work/yqs5519/SurvivalPlot/sensitivity_results13/settings.txt'
+location4 = '/storage/work/yqs5519/SurvivalPlot/sensitivity_results6/settings.txt'
+
+# n = 500
+# location1 = '/storage/work/yqs5519/SurvivalPlot/sensitivity_results2/settings.txt'
+# location2 = '/storage/work/yqs5519/SurvivalPlot/sensitivity_results3/settings.txt'
+# location3 = '/storage/work/yqs5519/SurvivalPlot/sensitivity_results14/settings.txt'
+# location4 = '/storage/work/yqs5519/SurvivalPlot/sensitivity_results4/settings.txt'
+
+location5 = '/storage/work/yqs5519/SurvivalPlot/sensitivity_results2/settings.txt'
+location6 = '/storage/work/yqs5519/SurvivalPlot/sensitivity_results3/settings.txt'
+location7 = '/storage/work/yqs5519/SurvivalPlot/sensitivity_results14/settings.txt'
+location8 = '/storage/work/yqs5519/SurvivalPlot/sensitivity_results4/settings.txt'
+
+
+# noncensor n200 
+# location1 = '/storage/work/yqs5519/SurvivalPlot/sensitivity_results7/settings.txt'
+# location2 = '/storage/work/yqs5519/SurvivalPlot/sensitivity_results8/settings.txt'
+# location3 = '/storage/work/yqs5519/SurvivalPlot/sensitivity_results15/settings.txt'
+# location4 = '/storage/work/yqs5519/SurvivalPlot/sensitivity_results9/settings.txt'
+
+# noncensor n = 500
+# location1 = '/storage/work/yqs5519/SurvivalPlot/sensitivity_results10/settings.txt'
+# location2 = '/storage/work/yqs5519/SurvivalPlot/sensitivity_results11/settings.txt'
+# location3 = '/storage/work/yqs5519/SurvivalPlot/sensitivity_results16/settings.txt'
+# location4 = '/storage/work/yqs5519/SurvivalPlot/sensitivity_results12/settings.txt'
+```
+
+## Functions 
+
+```{r}
+Wald_pair = function(stat_list, original_stat, diff_null = 0, G1, G2) {
+  w = c()
+  p = c()
+  for (i in 1:length(stat_list)) {
+    diff = stat_list[[i]][,G1] - stat_list[[i]][,G2] # bootstrap difference
+    diff_var = var(diff)
+    diff_hat = original_stat[i,][G1] - original_stat[i,][G2]
+    diff_hat = diff_hat[1,1]
+    w[i] = (diff_hat - diff_null)^2/diff_var
+    p[i] = pchisq(w[i], df=1, lower.tail = F)
+  }
+  return(list(Wald = w, pvalue = p))
+}
+
+
+# sum(diff) correct
+Wald_overall_sum_diff = function(stat_list, original_stat, diff_null = 0) {
+  w = c()
+  p = c()
+  for (i in 1:length(stat_list)) {
+    diff_vec = data.frame(stat_list[[i]][,1] - stat_list[[i]][,2],
+                          stat_list[[i]][,1] - stat_list[[i]][,3],
+                          stat_list[[i]][,2] - stat_list[[i]][,3]) %>% as.matrix()
+    A = c(original_stat$group0[i] - original_stat$group1[i], 
+          original_stat$group0[i] - original_stat$group2[i],
+          original_stat$group1[i] - original_stat$group2[i]) %>% as.matrix() %>% t()
+    covariance = cov(diff_vec)
+    w[i] = A %*% MASS::ginv(covariance) %*% t(A)
+    p[i] = pchisq(w[i], df=3, lower.tail = F)
+  }
+  return(list(Wald = w, pvalue = p))
+}
+
+```
+
+```{r}
+time_vec = seq(0.05,0.5,0.05)
+```
+
+## Settings 1
+
+```{r}
+setting = read.delim(location1) ## need to change manually
+location = setting[29,]
+
+lambda = setting[21,] %>% as.numeric()
+rho = setting[23,] %>% as.numeric()
+beta1 = setting[13,] %>% as.numeric()
+beta2 = setting[14,] %>% as.numeric()
+beta3 = setting[15,] %>% as.numeric()
+
+C_Survival_weibull1 = function(t) {
+  1-exp(-lambda*(t^rho)*exp(beta1))
+}
+
+C_Survival_weibull2 = function(t) {
+  1-exp(-lambda*(t^rho)*exp(beta2))
+}
+
+C_Survival_weibull3 = function(t) {
+  1-exp(-lambda*(t^rho)*exp(beta3))
+}
+
+bias_df_mean = data.frame(Stage = c('Stage0', 'Stage1', 'Stage2'))
+power_df = data.frame(Stage = c('Stage01', 'Stage02', 'Stage12', 'overall'))
+for (j in 1:length(time_vec)) {
+  Time_End = time_vec[j]
+  original_stat = read.csv(paste(location, 'original_statistic', j, '.csv', sep = ''))[,-1]
+  stat_list = readRDS(paste(location, 'stat_list', j, '.rds', sep = ''))
+  
+  True_AUC1 = integrate(C_Survival_weibull1, 0, Time_End)$value
+  True_AUC2 = integrate(C_Survival_weibull2, 0, Time_End)$value
+  True_AUC3 = integrate(C_Survival_weibull3, 0, Time_End)$value
+  
+  bias_df = data.frame(Stage0 = original_stat[,1] - True_AUC1,
+                       Stage1 = original_stat[,2] - True_AUC2,
+                       Stage2 = original_stat[,3] - True_AUC3) %>%
+    pivot_longer(1:3,
+                 names_to = 'group',
+                 values_to = 'bias')
+
+  bias_df_mean_temp = bias_df %>% group_by(group) %>% summarize(mean_bais = mean(bias))
+  bias_df_mean = cbind(bias_df_mean, bias_df_mean_temp[,2])
+  
+  
+  ## power
+  test = Wald_pair(stat_list, original_stat, diff_null = 0, G1 = 1, G2 = 2)
+  power1 = mean(test$pvalue<=0.05)
+  
+  test = Wald_pair(stat_list, original_stat, diff_null = 0, G1 = 1, G2 = 3)
+  power2 = mean(test$pvalue<=0.05)
+  
+  test = Wald_pair(stat_list, original_stat, diff_null = 0, G1 = 2, G2 = 3)
+  power3 = mean(test$pvalue<=0.05)
+  
+  test = Wald_overall_sum_diff(stat_list, original_stat, diff_null = 0)
+  power_all = mean(test$pvalue<=0.05)
+
+  power_df_temp = c(power1, power2, power3, power_all)
+  power_df = cbind(power_df, power_df_temp)
+}
+
+colnames(bias_df_mean) = c('Group', time_vec[1],  time_vec[2], time_vec[3], time_vec[4], time_vec[5], time_vec[6], time_vec[7], time_vec[8], time_vec[9], time_vec[10])
+
+bias_df_mean[,2:ncol(bias_df_mean)] = bias_df_mean[,2:ncol(bias_df_mean)]*30
+
+colnames(power_df) = c('Group', time_vec[1],  time_vec[2], time_vec[3], time_vec[4], time_vec[5], time_vec[6], time_vec[7], time_vec[8], time_vec[9], time_vec[10])
+
+quantile = read.csv(paste(location, 'quantile.csv', sep = ''))[,-1]
+## try median and min of 0.85 quantile
+quantile80 = quantile %>% filter(quantile == 0.85)
+min_80_1 = round_func(quantile80$quantile_mean, mean_min = 'min')*30
+median_80_1 = round_func(quantile80$quantile_mean, mean_min = 'median')*30
+
+power_df_long = power_df %>% pivot_longer(
+  2:ncol(power_df),
+  names_to = 'time',
+  values_to = 'value'
+) %>% mutate(time = as.numeric(time))
+
+bias_df_mean_long = bias_df_mean %>% pivot_longer(
+  2:ncol(bias_df_mean),
+  names_to = 'time',
+  values_to = 'value'
+) %>% mutate(time = as.numeric(time))
+
+df_long1 = rbind(power_df_long, bias_df_mean_long) %>% 
+  mutate(Type =c(rep('type1\nerror',nrow(power_df_long)), rep('bias', nrow(bias_df_mean_long)))) %>% 
+  # mutate(Type =c(rep('power',nrow(power_df_long)), rep('bias', nrow(bias_df_mean_long)))) %>% 
+  mutate(Group = factor(Group, levels = c('Stage0','Stage1','Stage2','Stage01','Stage02','Stage12','overall'))) %>% 
+  mutate(Scenario = rep('Scenario1', nrow(rbind(power_df_long, bias_df_mean_long)))) %>% 
+  mutate(time = time*30)
+```
+
+## Settings 2
+
+```{r}
+setting = read.delim(location2) ## need to change manually
+location = setting[29,]
+
+lambda = setting[21,] %>% as.numeric()
+rho = setting[23,] %>% as.numeric()
+beta1 = setting[13,] %>% as.numeric()
+beta2 = setting[14,] %>% as.numeric()
+beta3 = setting[15,] %>% as.numeric()
+
+C_Survival_weibull1 = function(t) {
+  1-exp(-lambda*(t^rho)*exp(beta1))
+}
+
+C_Survival_weibull2 = function(t) {
+  1-exp(-lambda*(t^rho)*exp(beta2))
+}
+
+C_Survival_weibull3 = function(t) {
+  1-exp(-lambda*(t^rho)*exp(beta3))
+}
+
+bias_df_mean = data.frame(Stage = c('Stage0', 'Stage1', 'Stage2'))
+power_df = data.frame(Stage = c('Stage01', 'Stage02', 'Stage12', 'overall'))
+for (j in 1:length(time_vec)) {
+  Time_End = time_vec[j]
+  original_stat = read.csv(paste(location, 'original_statistic', j, '.csv', sep = ''))[,-1]
+  stat_list = readRDS(paste(location, 'stat_list', j, '.rds', sep = ''))
+  
+  True_AUC1 = integrate(C_Survival_weibull1, 0, Time_End)$value
+  True_AUC2 = integrate(C_Survival_weibull2, 0, Time_End)$value
+  True_AUC3 = integrate(C_Survival_weibull3, 0, Time_End)$value
+  
+  bias_df = data.frame(Stage0 = original_stat[,1] - True_AUC1,
+                       Stage1 = original_stat[,2] - True_AUC2,
+                       Stage2 = original_stat[,3] - True_AUC3) %>%
+    pivot_longer(1:3,
+                 names_to = 'group',
+                 values_to = 'bias')
+
+  bias_df_mean_temp = bias_df %>% group_by(group) %>% summarize(mean_bais = mean(bias))
+  bias_df_mean = cbind(bias_df_mean, bias_df_mean_temp[,2])
+  
+  
+  ## power
+  test = Wald_pair(stat_list, original_stat, diff_null = 0, G1 = 1, G2 = 2)
+  power1 = mean(test$pvalue<=0.05)
+  
+  test = Wald_pair(stat_list, original_stat, diff_null = 0, G1 = 1, G2 = 3)
+  power2 = mean(test$pvalue<=0.05)
+  
+  test = Wald_pair(stat_list, original_stat, diff_null = 0, G1 = 2, G2 = 3)
+  power3 = mean(test$pvalue<=0.05)
+  
+  test = Wald_overall_sum_diff(stat_list, original_stat, diff_null = 0)
+  power_all = mean(test$pvalue<=0.05)
+
+  power_df_temp = c(power1, power2, power3, power_all)
+  power_df = cbind(power_df, power_df_temp)
+}
+
+colnames(bias_df_mean) = c('Group', time_vec[1],  time_vec[2], time_vec[3], time_vec[4], time_vec[5], time_vec[6], time_vec[7], time_vec[8], time_vec[9], time_vec[10])
+
+bias_df_mean[,2:ncol(bias_df_mean)] = bias_df_mean[,2:ncol(bias_df_mean)]*30
+
+colnames(power_df) = c('Group', time_vec[1],  time_vec[2], time_vec[3], time_vec[4], time_vec[5], time_vec[6], time_vec[7], time_vec[8], time_vec[9], time_vec[10])
+
+quantile = read.csv(paste(location, 'quantile.csv', sep = ''))[,-1]
+quantile80 = quantile %>% filter(quantile == 0.85)
+min_80_2 = round_func(quantile80$quantile_mean, mean_min = 'min')*30
+median_80_2 = round_func(quantile80$quantile_mean, mean_min = 'median')*30
+
+power_df_long = power_df %>% pivot_longer(
+  2:ncol(power_df),
+  names_to = 'time',
+  values_to = 'value'
+) %>% mutate(time = as.numeric(time))
+
+bias_df_mean_long = bias_df_mean %>% pivot_longer(
+  2:ncol(bias_df_mean),
+  names_to = 'time',
+  values_to = 'value'
+) %>% mutate(time = as.numeric(time))
+
+df_long2 = rbind(power_df_long, bias_df_mean_long) %>% 
+  mutate(Type =c(rep('type1\nerror',nrow(power_df_long)), rep('bias', nrow(bias_df_mean_long)))) %>% 
+  # mutate(Type =c(rep('power',nrow(power_df_long)), rep('bias', nrow(bias_df_mean_long)))) %>% 
+  mutate(Group = factor(Group, levels = c('Stage0','Stage1','Stage2','Stage01','Stage02','Stage12','overall'))) %>% 
+  mutate(Scenario = rep('Scenario2', nrow(rbind(power_df_long, bias_df_mean_long)))) %>% 
+  mutate(time = time*30)
+```
+
+## Settings 3
+
+```{r}
+setting = read.delim(location3) ## need to change manually
+location = setting[29,]
+
+lambda = setting[21,] %>% as.numeric()
+rho = setting[23,] %>% as.numeric()
+beta1 = setting[13,] %>% as.numeric()
+beta2 = setting[14,] %>% as.numeric()
+beta3 = setting[15,] %>% as.numeric()
+
+C_Survival_weibull1 = function(t) {
+  1-exp(-lambda*(t^rho)*exp(beta1))
+}
+
+C_Survival_weibull2 = function(t) {
+  1-exp(-lambda*(t^rho)*exp(beta2))
+}
+
+C_Survival_weibull3 = function(t) {
+  1-exp(-lambda*(t^rho)*exp(beta3))
+}
+
+bias_df_mean = data.frame(Stage = c('Stage0', 'Stage1', 'Stage2'))
+power_df = data.frame(Stage = c('Stage01', 'Stage02', 'Stage12', 'overall'))
+for (j in 1:length(time_vec)) {
+  Time_End = time_vec[j]
+  original_stat = read.csv(paste(location, 'original_statistic', j, '.csv', sep = ''))[,-1]
+  stat_list = readRDS(paste(location, 'stat_list', j, '.rds', sep = ''))
+  
+  True_AUC1 = integrate(C_Survival_weibull1, 0, Time_End)$value
+  True_AUC2 = integrate(C_Survival_weibull2, 0, Time_End)$value
+  True_AUC3 = integrate(C_Survival_weibull3, 0, Time_End)$value
+  
+  bias_df = data.frame(Stage0 = original_stat[,1] - True_AUC1,
+                       Stage1 = original_stat[,2] - True_AUC2,
+                       Stage2 = original_stat[,3] - True_AUC3) %>%
+    pivot_longer(1:3,
+                 names_to = 'group',
+                 values_to = 'bias')
+
+  bias_df_mean_temp = bias_df %>% group_by(group) %>% summarize(mean_bais = mean(bias))
+  bias_df_mean = cbind(bias_df_mean, bias_df_mean_temp[,2])
+  
+  
+  ## power
+  test = Wald_pair(stat_list, original_stat, diff_null = 0, G1 = 1, G2 = 2)
+  power1 = mean(test$pvalue<=0.05)
+  
+  test = Wald_pair(stat_list, original_stat, diff_null = 0, G1 = 1, G2 = 3)
+  power2 = mean(test$pvalue<=0.05)
+  
+  test = Wald_pair(stat_list, original_stat, diff_null = 0, G1 = 2, G2 = 3)
+  power3 = mean(test$pvalue<=0.05)
+  
+  test = Wald_overall_sum_diff(stat_list, original_stat, diff_null = 0)
+  power_all = mean(test$pvalue<=0.05)
+
+  power_df_temp = c(power1, power2, power3, power_all)
+  power_df = cbind(power_df, power_df_temp)
+}
+
+colnames(bias_df_mean) = c('Group', time_vec[1],  time_vec[2], time_vec[3], time_vec[4], time_vec[5], time_vec[6], time_vec[7], time_vec[8], time_vec[9], time_vec[10])
+
+bias_df_mean[,2:ncol(bias_df_mean)] = bias_df_mean[,2:ncol(bias_df_mean)]*30
+
+colnames(power_df) = c('Group', time_vec[1],  time_vec[2], time_vec[3], time_vec[4], time_vec[5], time_vec[6], time_vec[7], time_vec[8], time_vec[9], time_vec[10])
+
+quantile = read.csv(paste(location, 'quantile.csv', sep = ''))[,-1]
+quantile80 = quantile %>% filter(quantile == 0.85)
+min_80_3 = round_func(quantile80$quantile_mean, mean_min = 'min')*30
+median_80_3 = round_func(quantile80$quantile_mean, mean_min = 'median')*30
+
+power_df_long = power_df %>% pivot_longer(
+  2:ncol(power_df),
+  names_to = 'time',
+  values_to = 'value'
+) %>% mutate(time = as.numeric(time))
+
+bias_df_mean_long = bias_df_mean %>% pivot_longer(
+  2:ncol(bias_df_mean),
+  names_to = 'time',
+  values_to = 'value'
+) %>% mutate(time = as.numeric(time))
+
+df_long3 = rbind(power_df_long, bias_df_mean_long) %>% 
+  # mutate(Type =c(rep('type1 error',nrow(power_df_long)), rep('bias', nrow(bias_df_mean_long)))) %>% 
+  mutate(Type =c(rep('power',nrow(power_df_long)), rep('bias', nrow(bias_df_mean_long)))) %>%
+  mutate(Group = factor(Group, levels = c('Stage0','Stage1','Stage2','Stage01','Stage02','Stage12','overall'))) %>% 
+  mutate(Scenario = rep('Scenario3', nrow(rbind(power_df_long, bias_df_mean_long)))) %>% 
+  mutate(time = time*30)
+```
+
+## Settings 4
+
+```{r}
+setting = read.delim(location4) ## need to change manually
+location = setting[29,]
+
+lambda = setting[21,] %>% as.numeric()
+rho = setting[23,] %>% as.numeric()
+beta1 = setting[13,] %>% as.numeric()
+beta2 = setting[14,] %>% as.numeric()
+beta3 = setting[15,] %>% as.numeric()
+
+C_Survival_weibull1 = function(t) {
+  1-exp(-lambda*(t^rho)*exp(beta1))
+}
+
+C_Survival_weibull2 = function(t) {
+  1-exp(-lambda*(t^rho)*exp(beta2))
+}
+
+C_Survival_weibull3 = function(t) {
+  1-exp(-lambda*(t^rho)*exp(beta3))
+}
+
+bias_df_mean = data.frame(Stage = c('Stage0', 'Stage1', 'Stage2'))
+power_df = data.frame(Stage = c('Stage01', 'Stage02', 'Stage12', 'overall'))
+for (j in 1:length(time_vec)) {
+  Time_End = time_vec[j]
+  original_stat = read.csv(paste(location, 'original_statistic', j, '.csv', sep = ''))[,-1]
+  stat_list = readRDS(paste(location, 'stat_list', j, '.rds', sep = ''))
+  
+  True_AUC1 = integrate(C_Survival_weibull1, 0, Time_End)$value
+  True_AUC2 = integrate(C_Survival_weibull2, 0, Time_End)$value
+  True_AUC3 = integrate(C_Survival_weibull3, 0, Time_End)$value
+  
+  bias_df = data.frame(Stage0 = original_stat[,1] - True_AUC1,
+                       Stage1 = original_stat[,2] - True_AUC2,
+                       Stage2 = original_stat[,3] - True_AUC3) %>%
+    pivot_longer(1:3,
+                 names_to = 'group',
+                 values_to = 'bias')
+
+  bias_df_mean_temp = bias_df %>% group_by(group) %>% summarize(mean_bais = mean(bias))
+  bias_df_mean = cbind(bias_df_mean, bias_df_mean_temp[,2])
+  
+  
+  ## power
+  test = Wald_pair(stat_list, original_stat, diff_null = 0, G1 = 1, G2 = 2)
+  power1 = mean(test$pvalue<=0.05)
+  
+  test = Wald_pair(stat_list, original_stat, diff_null = 0, G1 = 1, G2 = 3)
+  power2 = mean(test$pvalue<=0.05)
+  
+  test = Wald_pair(stat_list, original_stat, diff_null = 0, G1 = 2, G2 = 3)
+  power3 = mean(test$pvalue<=0.05)
+  
+  test = Wald_overall_sum_diff(stat_list, original_stat, diff_null = 0)
+  power_all = mean(test$pvalue<=0.05)
+
+  power_df_temp = c(power1, power2, power3, power_all)
+  power_df = cbind(power_df, power_df_temp)
+}
+
+colnames(bias_df_mean) = c('Group', time_vec[1],  time_vec[2], time_vec[3], time_vec[4], time_vec[5], time_vec[6], time_vec[7], time_vec[8], time_vec[9], time_vec[10])
+
+bias_df_mean[,2:ncol(bias_df_mean)] = bias_df_mean[,2:ncol(bias_df_mean)]*30
+
+colnames(power_df) = c('Group', time_vec[1],  time_vec[2], time_vec[3], time_vec[4], time_vec[5], time_vec[6], time_vec[7], time_vec[8], time_vec[9], time_vec[10])
+
+quantile = read.csv(paste(location, 'quantile.csv', sep = ''))[,-1]
+quantile80 = quantile %>% filter(quantile == 0.85)
+min_80_4 = round_func(quantile80$quantile_mean, mean_min = 'min')*30
+median_80_4 = round_func(quantile80$quantile_mean, mean_min = 'median')*30
+
+power_df_long = power_df %>% pivot_longer(
+  2:ncol(power_df),
+  names_to = 'time',
+  values_to = 'value'
+) %>% mutate(time = as.numeric(time))
+
+bias_df_mean_long = bias_df_mean %>% pivot_longer(
+  2:ncol(bias_df_mean),
+  names_to = 'time',
+  values_to = 'value'
+) %>% mutate(time = as.numeric(time))
+
+df_long4 = rbind(power_df_long, bias_df_mean_long) %>% 
+  # mutate(Type =c(rep('type1 error',nrow(power_df_long)), rep('bias', nrow(bias_df_mean_long)))) %>% 
+  mutate(Type =c(rep('power',nrow(power_df_long)), rep('bias', nrow(bias_df_mean_long)))) %>%
+  mutate(Group = factor(Group, levels = c('Stage0','Stage1','Stage2','Stage01','Stage02','Stage12','overall'))) %>% 
+  mutate(Scenario = rep('Scenario4', nrow(rbind(power_df_long, bias_df_mean_long)))) %>% 
+  mutate(time = time*30)
+```
+
+
+## Settings 5
+
+```{r}
+setting = read.delim(location5) ## need to change manually
+location = setting[29,]
+
+lambda = setting[21,] %>% as.numeric()
+rho = setting[23,] %>% as.numeric()
+beta1 = setting[13,] %>% as.numeric()
+beta2 = setting[14,] %>% as.numeric()
+beta3 = setting[15,] %>% as.numeric()
+
+C_Survival_weibull1 = function(t) {
+  1-exp(-lambda*(t^rho)*exp(beta1))
+}
+
+C_Survival_weibull2 = function(t) {
+  1-exp(-lambda*(t^rho)*exp(beta2))
+}
+
+C_Survival_weibull3 = function(t) {
+  1-exp(-lambda*(t^rho)*exp(beta3))
+}
+
+bias_df_mean = data.frame(Stage = c('Stage0', 'Stage1', 'Stage2'))
+power_df = data.frame(Stage = c('Stage01', 'Stage02', 'Stage12', 'overall'))
+for (j in 1:length(time_vec)) {
+  Time_End = time_vec[j]
+  original_stat = read.csv(paste(location, 'original_statistic', j, '.csv', sep = ''))[,-1]
+  stat_list = readRDS(paste(location, 'stat_list', j, '.rds', sep = ''))
+  
+  True_AUC1 = integrate(C_Survival_weibull1, 0, Time_End)$value
+  True_AUC2 = integrate(C_Survival_weibull2, 0, Time_End)$value
+  True_AUC3 = integrate(C_Survival_weibull3, 0, Time_End)$value
+  
+  bias_df = data.frame(Stage0 = original_stat[,1] - True_AUC1,
+                       Stage1 = original_stat[,2] - True_AUC2,
+                       Stage2 = original_stat[,3] - True_AUC3) %>%
+    pivot_longer(1:3,
+                 names_to = 'group',
+                 values_to = 'bias')
+
+  bias_df_mean_temp = bias_df %>% group_by(group) %>% summarize(mean_bais = mean(bias))
+  bias_df_mean = cbind(bias_df_mean, bias_df_mean_temp[,2])
+  
+  
+  ## power
+  test = Wald_pair(stat_list, original_stat, diff_null = 0, G1 = 1, G2 = 2)
+  power1 = mean(test$pvalue<=0.05)
+  
+  test = Wald_pair(stat_list, original_stat, diff_null = 0, G1 = 1, G2 = 3)
+  power2 = mean(test$pvalue<=0.05)
+  
+  test = Wald_pair(stat_list, original_stat, diff_null = 0, G1 = 2, G2 = 3)
+  power3 = mean(test$pvalue<=0.05)
+  
+  test = Wald_overall_sum_diff(stat_list, original_stat, diff_null = 0)
+  power_all = mean(test$pvalue<=0.05)
+
+  power_df_temp = c(power1, power2, power3, power_all)
+  power_df = cbind(power_df, power_df_temp)
+}
+
+colnames(bias_df_mean) = c('Group', time_vec[1],  time_vec[2], time_vec[3], time_vec[4], time_vec[5], time_vec[6], time_vec[7], time_vec[8], time_vec[9], time_vec[10])
+
+bias_df_mean[,2:ncol(bias_df_mean)] = bias_df_mean[,2:ncol(bias_df_mean)]*30
+
+colnames(power_df) = c('Group', time_vec[1],  time_vec[2], time_vec[3], time_vec[4], time_vec[5], time_vec[6], time_vec[7], time_vec[8], time_vec[9], time_vec[10])
+
+quantile = read.csv(paste(location, 'quantile.csv', sep = ''))[,-1]
+## try median and min of 0.85 quantile
+quantile80 = quantile %>% filter(quantile == 0.85)
+min_80_1 = round_func(quantile80$quantile_mean, mean_min = 'min')*30
+median_80_1 = round_func(quantile80$quantile_mean, mean_min = 'median')*30
+
+power_df_long = power_df %>% pivot_longer(
+  2:ncol(power_df),
+  names_to = 'time',
+  values_to = 'value'
+) %>% mutate(time = as.numeric(time))
+
+bias_df_mean_long = bias_df_mean %>% pivot_longer(
+  2:ncol(bias_df_mean),
+  names_to = 'time',
+  values_to = 'value'
+) %>% mutate(time = as.numeric(time))
+
+df_long5 = rbind(power_df_long, bias_df_mean_long) %>% 
+  mutate(Type =c(rep('type1\nerror',nrow(power_df_long)), rep('bias', nrow(bias_df_mean_long)))) %>% 
+  # mutate(Type =c(rep('power',nrow(power_df_long)), rep('bias', nrow(bias_df_mean_long)))) %>% 
+  mutate(Group = factor(Group, levels = c('Stage0','Stage1','Stage2','Stage01','Stage02','Stage12','overall'))) %>% 
+  mutate(Scenario = rep('Scenario1', nrow(rbind(power_df_long, bias_df_mean_long)))) %>% 
+  mutate(time = time*30)
+```
+
+## Settings 6
+
+```{r}
+setting = read.delim(location6) ## need to change manually
+location = setting[29,]
+
+lambda = setting[21,] %>% as.numeric()
+rho = setting[23,] %>% as.numeric()
+beta1 = setting[13,] %>% as.numeric()
+beta2 = setting[14,] %>% as.numeric()
+beta3 = setting[15,] %>% as.numeric()
+
+C_Survival_weibull1 = function(t) {
+  1-exp(-lambda*(t^rho)*exp(beta1))
+}
+
+C_Survival_weibull2 = function(t) {
+  1-exp(-lambda*(t^rho)*exp(beta2))
+}
+
+C_Survival_weibull3 = function(t) {
+  1-exp(-lambda*(t^rho)*exp(beta3))
+}
+
+bias_df_mean = data.frame(Stage = c('Stage0', 'Stage1', 'Stage2'))
+power_df = data.frame(Stage = c('Stage01', 'Stage02', 'Stage12', 'overall'))
+for (j in 1:length(time_vec)) {
+  Time_End = time_vec[j]
+  original_stat = read.csv(paste(location, 'original_statistic', j, '.csv', sep = ''))[,-1]
+  stat_list = readRDS(paste(location, 'stat_list', j, '.rds', sep = ''))
+  
+  True_AUC1 = integrate(C_Survival_weibull1, 0, Time_End)$value
+  True_AUC2 = integrate(C_Survival_weibull2, 0, Time_End)$value
+  True_AUC3 = integrate(C_Survival_weibull3, 0, Time_End)$value
+  
+  bias_df = data.frame(Stage0 = original_stat[,1] - True_AUC1,
+                       Stage1 = original_stat[,2] - True_AUC2,
+                       Stage2 = original_stat[,3] - True_AUC3) %>%
+    pivot_longer(1:3,
+                 names_to = 'group',
+                 values_to = 'bias')
+
+  bias_df_mean_temp = bias_df %>% group_by(group) %>% summarize(mean_bais = mean(bias))
+  bias_df_mean = cbind(bias_df_mean, bias_df_mean_temp[,2])
+  
+  
+  ## power
+  test = Wald_pair(stat_list, original_stat, diff_null = 0, G1 = 1, G2 = 2)
+  power1 = mean(test$pvalue<=0.05)
+  
+  test = Wald_pair(stat_list, original_stat, diff_null = 0, G1 = 1, G2 = 3)
+  power2 = mean(test$pvalue<=0.05)
+  
+  test = Wald_pair(stat_list, original_stat, diff_null = 0, G1 = 2, G2 = 3)
+  power3 = mean(test$pvalue<=0.05)
+  
+  test = Wald_overall_sum_diff(stat_list, original_stat, diff_null = 0)
+  power_all = mean(test$pvalue<=0.05)
+
+  power_df_temp = c(power1, power2, power3, power_all)
+  power_df = cbind(power_df, power_df_temp)
+}
+
+colnames(bias_df_mean) = c('Group', time_vec[1],  time_vec[2], time_vec[3], time_vec[4], time_vec[5], time_vec[6], time_vec[7], time_vec[8], time_vec[9], time_vec[10])
+
+bias_df_mean[,2:ncol(bias_df_mean)] = bias_df_mean[,2:ncol(bias_df_mean)]*30
+
+colnames(power_df) = c('Group', time_vec[1],  time_vec[2], time_vec[3], time_vec[4], time_vec[5], time_vec[6], time_vec[7], time_vec[8], time_vec[9], time_vec[10])
+
+quantile = read.csv(paste(location, 'quantile.csv', sep = ''))[,-1]
+quantile80 = quantile %>% filter(quantile == 0.85)
+min_80_2 = round_func(quantile80$quantile_mean, mean_min = 'min')*30
+median_80_2 = round_func(quantile80$quantile_mean, mean_min = 'median')*30
+
+power_df_long = power_df %>% pivot_longer(
+  2:ncol(power_df),
+  names_to = 'time',
+  values_to = 'value'
+) %>% mutate(time = as.numeric(time))
+
+bias_df_mean_long = bias_df_mean %>% pivot_longer(
+  2:ncol(bias_df_mean),
+  names_to = 'time',
+  values_to = 'value'
+) %>% mutate(time = as.numeric(time))
+
+df_long6 = rbind(power_df_long, bias_df_mean_long) %>% 
+  mutate(Type =c(rep('type1\nerror',nrow(power_df_long)), rep('bias', nrow(bias_df_mean_long)))) %>% 
+  # mutate(Type =c(rep('power',nrow(power_df_long)), rep('bias', nrow(bias_df_mean_long)))) %>% 
+  mutate(Group = factor(Group, levels = c('Stage0','Stage1','Stage2','Stage01','Stage02','Stage12','overall'))) %>% 
+  mutate(Scenario = rep('Scenario2', nrow(rbind(power_df_long, bias_df_mean_long)))) %>% 
+  mutate(time = time*30)
+```
+
+## Settings 7
+
+```{r}
+setting = read.delim(location7) ## need to change manually
+location = setting[29,]
+
+lambda = setting[21,] %>% as.numeric()
+rho = setting[23,] %>% as.numeric()
+beta1 = setting[13,] %>% as.numeric()
+beta2 = setting[14,] %>% as.numeric()
+beta3 = setting[15,] %>% as.numeric()
+
+C_Survival_weibull1 = function(t) {
+  1-exp(-lambda*(t^rho)*exp(beta1))
+}
+
+C_Survival_weibull2 = function(t) {
+  1-exp(-lambda*(t^rho)*exp(beta2))
+}
+
+C_Survival_weibull3 = function(t) {
+  1-exp(-lambda*(t^rho)*exp(beta3))
+}
+
+bias_df_mean = data.frame(Stage = c('Stage0', 'Stage1', 'Stage2'))
+power_df = data.frame(Stage = c('Stage01', 'Stage02', 'Stage12', 'overall'))
+for (j in 1:length(time_vec)) {
+  Time_End = time_vec[j]
+  original_stat = read.csv(paste(location, 'original_statistic', j, '.csv', sep = ''))[,-1]
+  stat_list = readRDS(paste(location, 'stat_list', j, '.rds', sep = ''))
+  
+  True_AUC1 = integrate(C_Survival_weibull1, 0, Time_End)$value
+  True_AUC2 = integrate(C_Survival_weibull2, 0, Time_End)$value
+  True_AUC3 = integrate(C_Survival_weibull3, 0, Time_End)$value
+  
+  bias_df = data.frame(Stage0 = original_stat[,1] - True_AUC1,
+                       Stage1 = original_stat[,2] - True_AUC2,
+                       Stage2 = original_stat[,3] - True_AUC3) %>%
+    pivot_longer(1:3,
+                 names_to = 'group',
+                 values_to = 'bias')
+
+  bias_df_mean_temp = bias_df %>% group_by(group) %>% summarize(mean_bais = mean(bias))
+  bias_df_mean = cbind(bias_df_mean, bias_df_mean_temp[,2])
+  
+  
+  ## power
+  test = Wald_pair(stat_list, original_stat, diff_null = 0, G1 = 1, G2 = 2)
+  power1 = mean(test$pvalue<=0.05)
+  
+  test = Wald_pair(stat_list, original_stat, diff_null = 0, G1 = 1, G2 = 3)
+  power2 = mean(test$pvalue<=0.05)
+  
+  test = Wald_pair(stat_list, original_stat, diff_null = 0, G1 = 2, G2 = 3)
+  power3 = mean(test$pvalue<=0.05)
+  
+  test = Wald_overall_sum_diff(stat_list, original_stat, diff_null = 0)
+  power_all = mean(test$pvalue<=0.05)
+
+  power_df_temp = c(power1, power2, power3, power_all)
+  power_df = cbind(power_df, power_df_temp)
+}
+
+colnames(bias_df_mean) = c('Group', time_vec[1],  time_vec[2], time_vec[3], time_vec[4], time_vec[5], time_vec[6], time_vec[7], time_vec[8], time_vec[9], time_vec[10])
+
+bias_df_mean[,2:ncol(bias_df_mean)] = bias_df_mean[,2:ncol(bias_df_mean)]*30
+
+colnames(power_df) = c('Group', time_vec[1],  time_vec[2], time_vec[3], time_vec[4], time_vec[5], time_vec[6], time_vec[7], time_vec[8], time_vec[9], time_vec[10])
+
+quantile = read.csv(paste(location, 'quantile.csv', sep = ''))[,-1]
+quantile80 = quantile %>% filter(quantile == 0.85)
+min_80_3 = round_func(quantile80$quantile_mean, mean_min = 'min')*30
+median_80_3 = round_func(quantile80$quantile_mean, mean_min = 'median')*30
+
+power_df_long = power_df %>% pivot_longer(
+  2:ncol(power_df),
+  names_to = 'time',
+  values_to = 'value'
+) %>% mutate(time = as.numeric(time))
+
+bias_df_mean_long = bias_df_mean %>% pivot_longer(
+  2:ncol(bias_df_mean),
+  names_to = 'time',
+  values_to = 'value'
+) %>% mutate(time = as.numeric(time))
+
+df_long7 = rbind(power_df_long, bias_df_mean_long) %>% 
+  # mutate(Type =c(rep('type1 error',nrow(power_df_long)), rep('bias', nrow(bias_df_mean_long)))) %>% 
+  mutate(Type =c(rep('power',nrow(power_df_long)), rep('bias', nrow(bias_df_mean_long)))) %>%
+  mutate(Group = factor(Group, levels = c('Stage0','Stage1','Stage2','Stage01','Stage02','Stage12','overall'))) %>% 
+  mutate(Scenario = rep('Scenario3', nrow(rbind(power_df_long, bias_df_mean_long)))) %>% 
+  mutate(time = time*30)
+```
+
+## Settings 8
+
+```{r}
+setting = read.delim(location8) ## need to change manually
+location = setting[29,]
+
+lambda = setting[21,] %>% as.numeric()
+rho = setting[23,] %>% as.numeric()
+beta1 = setting[13,] %>% as.numeric()
+beta2 = setting[14,] %>% as.numeric()
+beta3 = setting[15,] %>% as.numeric()
+
+C_Survival_weibull1 = function(t) {
+  1-exp(-lambda*(t^rho)*exp(beta1))
+}
+
+C_Survival_weibull2 = function(t) {
+  1-exp(-lambda*(t^rho)*exp(beta2))
+}
+
+C_Survival_weibull3 = function(t) {
+  1-exp(-lambda*(t^rho)*exp(beta3))
+}
+
+bias_df_mean = data.frame(Stage = c('Stage0', 'Stage1', 'Stage2'))
+power_df = data.frame(Stage = c('Stage01', 'Stage02', 'Stage12', 'overall'))
+for (j in 1:length(time_vec)) {
+  Time_End = time_vec[j]
+  original_stat = read.csv(paste(location, 'original_statistic', j, '.csv', sep = ''))[,-1]
+  stat_list = readRDS(paste(location, 'stat_list', j, '.rds', sep = ''))
+  
+  True_AUC1 = integrate(C_Survival_weibull1, 0, Time_End)$value
+  True_AUC2 = integrate(C_Survival_weibull2, 0, Time_End)$value
+  True_AUC3 = integrate(C_Survival_weibull3, 0, Time_End)$value
+  
+  bias_df = data.frame(Stage0 = original_stat[,1] - True_AUC1,
+                       Stage1 = original_stat[,2] - True_AUC2,
+                       Stage2 = original_stat[,3] - True_AUC3) %>%
+    pivot_longer(1:3,
+                 names_to = 'group',
+                 values_to = 'bias')
+
+  bias_df_mean_temp = bias_df %>% group_by(group) %>% summarize(mean_bais = mean(bias))
+  bias_df_mean = cbind(bias_df_mean, bias_df_mean_temp[,2])
+  
+  
+  ## power
+  test = Wald_pair(stat_list, original_stat, diff_null = 0, G1 = 1, G2 = 2)
+  power1 = mean(test$pvalue<=0.05)
+  
+  test = Wald_pair(stat_list, original_stat, diff_null = 0, G1 = 1, G2 = 3)
+  power2 = mean(test$pvalue<=0.05)
+  
+  test = Wald_pair(stat_list, original_stat, diff_null = 0, G1 = 2, G2 = 3)
+  power3 = mean(test$pvalue<=0.05)
+  
+  test = Wald_overall_sum_diff(stat_list, original_stat, diff_null = 0)
+  power_all = mean(test$pvalue<=0.05)
+
+  power_df_temp = c(power1, power2, power3, power_all)
+  power_df = cbind(power_df, power_df_temp)
+}
+
+colnames(bias_df_mean) = c('Group', time_vec[1],  time_vec[2], time_vec[3], time_vec[4], time_vec[5], time_vec[6], time_vec[7], time_vec[8], time_vec[9], time_vec[10])
+
+bias_df_mean[,2:ncol(bias_df_mean)] = bias_df_mean[,2:ncol(bias_df_mean)]*30
+
+colnames(power_df) = c('Group', time_vec[1],  time_vec[2], time_vec[3], time_vec[4], time_vec[5], time_vec[6], time_vec[7], time_vec[8], time_vec[9], time_vec[10])
+
+quantile = read.csv(paste(location, 'quantile.csv', sep = ''))[,-1]
+quantile80 = quantile %>% filter(quantile == 0.85)
+min_80_4 = round_func(quantile80$quantile_mean, mean_min = 'min')*30
+median_80_4 = round_func(quantile80$quantile_mean, mean_min = 'median')*30
+
+power_df_long = power_df %>% pivot_longer(
+  2:ncol(power_df),
+  names_to = 'time',
+  values_to = 'value'
+) %>% mutate(time = as.numeric(time))
+
+bias_df_mean_long = bias_df_mean %>% pivot_longer(
+  2:ncol(bias_df_mean),
+  names_to = 'time',
+  values_to = 'value'
+) %>% mutate(time = as.numeric(time))
+
+df_long8 = rbind(power_df_long, bias_df_mean_long) %>% 
+  # mutate(Type =c(rep('type1 error',nrow(power_df_long)), rep('bias', nrow(bias_df_mean_long)))) %>% 
+  mutate(Type =c(rep('power',nrow(power_df_long)), rep('bias', nrow(bias_df_mean_long)))) %>%
+  mutate(Group = factor(Group, levels = c('Stage0','Stage1','Stage2','Stage01','Stage02','Stage12','overall'))) %>% 
+  mutate(Scenario = rep('Scenario4', nrow(rbind(power_df_long, bias_df_mean_long)))) %>% 
+  mutate(time = time*30)
+```
+
+## Plot
+
+```{r}
+min_median = data.frame(value = c(min_80_1, median_80_1, min_80_2, median_80_2, min_80_3, median_80_3, min_80_4, median_80_4),
+                        Scenario = c('Scenario1', 'Scenario1', 'Scenario2','Scenario2', 'Scenario3', 'Scenario3', 'Scenario4', 'Scenario4'))
+
+
+min_median_type1 = min_median %>% filter(Scenario == 'Scenario1' | Scenario == 'Scenario2') %>% mutate(type = c(' min', ' median', ' min', ' median'))
+min_median_power = min_median %>% filter(Scenario == 'Scenario3' | Scenario == 'Scenario4') %>% mutate(type = c(' min', ' median', ' min', ' median'))
+
+
+all_plot_df_type1 = rbind(df_long1, df_long2)
+all_plot_df_power = rbind(df_long3, df_long4)
+
+all_plot_df_type1_500 = rbind(df_long5, df_long6)
+all_plot_df_power_500 = rbind(df_long7, df_long8)
+```
+
+```{r, fig.height=4, fig.width=5}
+## combine plots with two sample size: using simulation 1-8
+all_plot_df_type1_all = rbind(all_plot_df_type1, all_plot_df_type1_500) %>% 
+  mutate(n = c(rep('n = 200', nrow(all_plot_df_type1)), rep('n = 500', nrow(all_plot_df_type1_500))))
+
+
+a = 
+ggplot(all_plot_df_type1_all, aes(x = time, y = value, group = Group)) + 
+  geom_line(aes(color = Group)) +
+  geom_point(aes(color = Group)) +
+  geom_vline(data = min_median_type1, aes(xintercept = value, group = Scenario,
+                                          linetype = factor(type, levels = c(' min', ' median'))), color = 'darkblue') +
+  facet_grid(Type ~ Scenario + n, scales="free_y") +
+  labs(x = NULL, y = NULL) +
+  theme_bw() +
+  theme(strip.text.y = element_text(angle = 0, hjust = 0.5),
+        plot.margin = unit(c(0, 0, 0, 0), "cm"),
+        axis.text.x = element_text(angle = 45, hjust = 1)) +
+  theme(legend.position = "none") + 
+  scale_x_continuous(breaks = seq(min(all_plot_df_type1_all$time), max(all_plot_df_type1_all$time), by = 1.5))
+
+all_plot_df_power_all = rbind(all_plot_df_power, all_plot_df_power_500) %>% 
+  mutate(n = c(rep('n = 200', nrow(all_plot_df_type1)), rep('n = 500', nrow(all_plot_df_type1_500))))
+
+b = 
+ggplot() +
+  geom_line(data = all_plot_df_power_all, aes(x = time, y = value, group = Group, color = Group)) +
+  geom_point(data = all_plot_df_power_all, aes(x = time, y = value, color = Group)) +
+  geom_vline(data = min_median_power, aes(xintercept = value, group = Scenario,
+                                          linetype = factor(type, levels = c(' min', ' median'))), color = 'darkblue') +
+  facet_grid(Type ~ Scenario + n, scales = "free_y") +
+  labs(x = NULL, y = NULL) +
+  theme_bw() +
+  theme(strip.text.y = element_text(angle = 0, hjust = 0.5),
+        axis.text.x = element_text(angle = 45, hjust = 1)) +
+  theme(legend.position = "bottom") +
+  theme(plot.margin = unit(c(0, 0, 0, 0), "cm")) +
+  scale_linetype(name = "Time End") +
+  scale_x_continuous(breaks = seq(min(all_plot_df_type1_all$time), max(all_plot_df_type1_all$time), by = 1.5))
+
+
+library(cowplot)
+plot_grid(a,b, align = "hv", axis ='both', ncol = 1)
+ggsave("report_figures/Censor_sensitivity.png", plot = last_plot(), width = 10, height = 8, units = "in", dpi = 500)
+```
+
+```{r eval=FALSE, include=FALSE}
+ggplot() +
+  geom_line(data = all_plot_df_power_all, aes(x = time, y = value, group = Group, color = Group)) +
+  geom_point(data = all_plot_df_power_all, aes(x = time, y = value, color = Group)) +
+  geom_vline(data = min_median_power, aes(xintercept = value, group = Scenario,
+                                          linetype = factor(type, levels = c(' min', ' median'))), color = 'darkblue') +
+  facet_grid(Type ~ n + Scenario, scales = "free_y") +
+  labs(x = NULL, y = NULL) +
+  theme_bw() +
+  theme(strip.text.y = element_text(angle = 0, hjust = 0.5)) +
+  theme(legend.position = "bottom") +
+  scale_linetype(name = "Time End") 
+```
+
+
+
+```{r eval=FALSE, fig.height=4, fig.width=5,include=FALSE}
+## single plot with one sample size: using simulation 1-4
+a = 
+ggplot(all_plot_df_type1, aes(x = time, y = value, group = Group)) + 
+  geom_line(aes(color = Group)) +
+  geom_point(aes(color = Group)) +
+  geom_vline(data = min_median_type1, aes(xintercept = value, group = Scenario, color = type), linetype = "dashed") +
+  facet_grid(Type ~ Scenario, scales="free_y") +
+  labs(x = NULL, y = NULL) +
+  theme_bw() +
+  theme(strip.text.y = element_text(angle = 0, hjust = 0.5)) +
+  theme(legend.position = "none")  # Remove the legend
+
+b = 
+ggplot(all_plot_df_power, aes(x = time, y = value, group = Group)) + 
+  geom_line(aes(color = Group)) +
+  geom_point(aes(color = Group)) +
+  geom_vline(data = min_median_power, aes(xintercept = value, group = Scenario, color = type), linetype = "dashed") +
+  facet_grid(Type ~ Scenario, scales="free_y") +
+  labs(x = "Time", y = NULL) +
+  theme_bw() +
+  theme(strip.text.y = element_text(angle = 0, hjust = 0.5)) +
+  theme(legend.position = "bottom") 
+
+library(cowplot)
+# plot_grid(a,b, align = "hv", axis ='both', ncol = 1)
+# ggsave("report_figures/Censor_n500.png", plot = last_plot(), width = 8, height = 8, units = "in", dpi = 500)
+```
+
+
+
